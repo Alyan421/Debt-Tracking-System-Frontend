@@ -4,17 +4,22 @@ import "./Layout.css";
 
 interface LayoutProps {
   children: React.ReactNode;
+  onLogout: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children, onLogout }) => {
   return (
     <div className="layout">
       <Sidebar />
-      <main className="layout-content">
-        <div className="content-wrapper">
-          {children}
-        </div>
-      </main>
+      <div className="content">
+        <header>
+          <h1>Debt Tracking System</h1>
+          <button onClick={onLogout} className="logout-button">Logout</button>
+        </header>
+        <main>{children}</main>
+      </div>
     </div>
   );
 };
+
+export default Layout;
