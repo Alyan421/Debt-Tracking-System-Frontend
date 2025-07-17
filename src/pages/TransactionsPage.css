@@ -1,0 +1,405 @@
+/* General styles for the page */
+.transactions-page {
+  padding: 16px;
+  font-family: Arial, sans-serif;
+}
+
+/* Header styles */
+.transactions-page h1 {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Card styles */
+.card {
+  margin-bottom: 24px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card-content {
+  padding: 16px;
+}
+
+/* Form styles */
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+form .input-wrapper,
+form .dropdown {
+  flex: 1 1 calc(50% - 16px); /* Two columns with spacing */
+  min-width: 200px; /* Ensure a minimum width */
+}
+
+form .button {
+  flex: 1 1 100%; /* Full width for buttons */
+}
+
+/* Table styles */
+.transactions-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.transactions-table th,
+.transactions-table td {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.transactions-table th {
+  background-color: #f9f9f9;
+  font-weight: bold;
+}
+
+.transactions-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Button styles */
+.button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.button-primary {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.button-secondary {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+.button-danger {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+/* Input and Dropdown styles */
+.input-wrapper input,
+.dropdown select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.input-wrapper input:focus,
+.dropdown select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.5);
+}
+
+/* Additional form styles */
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-button {
+  margin-top: 8px;
+}
+
+/* Filter styles */
+.filter-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+/* Error message */
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+/* Loading and empty state styles */
+.loading-message,
+.empty-message {
+  padding: 20px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.text-green-600 {
+  color: #198754;
+}
+
+.text-red-600 {
+  color: #dc3545;
+}
+
+/* Table container for mobile scroll */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .transactions-page {
+    padding: 12px;
+  }
+  
+  .card-content {
+    padding: 12px;
+  }
+  
+  form .input-wrapper,
+  form .dropdown {
+    flex: 1 1 100%; /* Full width on mobile */
+  }
+  
+  .filter-buttons {
+    flex-direction: column;
+  }
+  
+  .filter-buttons .button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .filter-buttons .button:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Make table buttons stack on mobile */
+  .transactions-table td:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  /* Adjust button sizes on mobile */
+  .transactions-table .button {
+    padding: 6px 12px;
+    font-size: 12px;
+    width: 100%;
+    text-align: center;
+  }
+  
+  /* Responsive typography */
+  .transactions-page h1 {
+    font-size: 20px;
+  }
+  
+  .card h2 {
+    font-size: 18px;
+  }
+}
+
+/* Adding to your existing CSS file */
+
+/* Month navigation styles */
+.month-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  justify-content: center;
+}
+
+.month-button {
+  padding: 6px 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.month-button:hover {
+  background-color: #e0e0e0;
+}
+
+.month-button.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #0069d9;
+}
+
+/* Month header */
+.month-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.month-header:hover {
+  background-color: #f0f0f0;
+}
+
+.month-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.month-toggle {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #555;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.month-content {
+  margin-bottom: 24px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.month-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  padding: 12px 16px;
+  flex: 1;
+  min-width: 120px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.summary-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.summary-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.summary-value.credit {
+  color: #198754;
+}
+
+.summary-value.debit {
+  color: #dc3545;
+}
+
+/* Current month highlight */
+.current-month-label {
+  font-size: 14px;
+  color: #0069d9;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+/* Year selector */
+.year-selector {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.year-button {
+  padding: 6px 12px;
+  background-color: transparent;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.year-display {
+  padding: 6px 12px;
+  font-weight: 600;
+}
+
+/* Mobile styles for month navigation */
+@media (max-width: 768px) {
+  .month-navigation {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .month-button {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  
+  .summary-item {
+    min-width: 100px;
+  }
+  
+  .month-header h3 {
+    font-size: 14px;
+  }
+}

@@ -1,0 +1,202 @@
+/* General styles for the page */
+.customers-page {
+  padding: 16px;
+  font-family: Arial, sans-serif;
+}
+
+/* Header styles */
+.customers-page h1 {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Card styles */
+.card {
+  margin-bottom: 24px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card-content {
+  padding: 16px;
+}
+
+/* Form styles */
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+/* Table styles */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.customers-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.customers-table th,
+.customers-table td {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.customers-table th {
+  background-color: #f9f9f9;
+  font-weight: bold;
+}
+
+.customers-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Button styles */
+.button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.button-primary {
+  background-color: #007bff;
+  color: #fff;
+}
+
+.button-secondary {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+.button-danger {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+/* Input styles */
+.input-wrapper input,
+.dropdown select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.input-wrapper input:focus,
+.dropdown select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.5);
+}
+
+/* Loading and empty state styles */
+.loading-message,
+.empty-message {
+  padding: 20px;
+  text-align: center;
+  color: #6c757d;
+}
+
+/* Text colors */
+.text-green-600 {
+  color: #198754;
+}
+
+.text-red-600 {
+  color: #dc3545;
+}
+
+/* Error message */
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .customers-page {
+    padding: 12px;
+  }
+  
+  .card-content {
+    padding: 12px;
+  }
+  
+  /* Stack form elements on mobile */
+  .form-group {
+    flex: 1 1 100%;
+  }
+  
+  /* Stack buttons on mobile */
+  .form-buttons {
+    flex-direction: column;
+  }
+  
+  .form-buttons .button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .form-buttons .button:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Make table buttons stack on mobile */
+  .customers-table td:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  /* Adjust button sizes on mobile */
+  .customers-table .button {
+    padding: 6px 12px;
+    font-size: 12px;
+    width: 100%;
+    text-align: center;
+  }
+  
+  /* Responsive typography */
+  .customers-page h1 {
+    font-size: 20px;
+  }
+  
+  .card h2 {
+    font-size: 18px;
+  }
+}
