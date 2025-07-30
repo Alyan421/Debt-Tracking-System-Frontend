@@ -102,17 +102,6 @@ export default function TransactionsPage() {
     new Date().toISOString().substring(0, 10)
   );
 
-  // Load data on component mount
-  useEffect(() => {
-    loadAllTransactions();
-    loadCustomers();
-  }, []);
-
-  // Effect to organize transactions by month when all transactions change
-  useEffect(() => {
-    organizeTransactionsByMonth();
-  }, [allTransactions]);
-
   // Load all transactions from the API
   const loadAllTransactions = useCallback(async () => {
     setIsLoading(true);
@@ -169,11 +158,20 @@ export default function TransactionsPage() {
     setMonthlyData(monthData);
   }, [allTransactions]);
 
+    const loadCustomers = useCallback(async () => {
+    try {
+      const data = await fetchAllCustomers();
+      setCustomers(data);
+    } catch (error) {
+      console.error("Failed to load customers:", error);
+    }
+  }, []);
+
   // Load data on component mount
   useEffect(() => {
     loadAllTransactions();
     loadCustomers();
-  }, [loadAllTransactions]);
+  }, [loadAllTransactions, loadCustomers]);
 
   // Effect to organize transactions by month when all transactions change
   useEffect(() => {
@@ -272,15 +270,6 @@ export default function TransactionsPage() {
 
     // Update transactions shown based on selected month and new year
     setTransactions(getMonthTransactions(allTransactions, selectedMonth, newYear));
-  };
-
-  const loadCustomers = async () => {
-    try {
-      const data = await fetchAllCustomers();
-      setCustomers(data);
-    } catch (error) {
-      console.error("Failed to load customers:", error);
-    }
   };
 
   const handleFilter = async () => {
