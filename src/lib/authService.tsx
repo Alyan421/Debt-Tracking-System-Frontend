@@ -7,17 +7,10 @@ const authService = {
   /**
    * Creates a Basic Auth header value using the configured credentials
    */
-getBasicAuthHeader: () => {
+  getBasicAuthHeader: () => {
     const { username, password } = config.auth;
     const base64Credentials = btoa(`${username}:${password}`);
-    const header = `Basic ${base64Credentials}`;
-    
-    // Debug logging (remove in production)
-    console.log('Auth config:', { username, password: password?.replace(/./g, '*') });
-    console.log('Base64 credentials:', base64Credentials);
-    console.log('Full auth header:', header);
-    
-    return header;
+    return `Basic ${base64Credentials}`;
   },
   
   /**
@@ -35,7 +28,6 @@ getBasicAuthHeader: () => {
         }
       });
       
-      console.log('Credentials verification response:', response.status, response.statusText);
       return response.ok;
     } catch (error) {
       console.error('Credentials verification failed:', error);

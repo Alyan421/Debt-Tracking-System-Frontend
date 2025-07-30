@@ -34,7 +34,7 @@ jobs:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
           REACT_APP_PASSWORD: ${{ secrets.REACT_APP_PASSWORD }}
           REACT_APP_AUTH_USER: ${{ secrets.REACT_APP_AUTH_USER }}
-          REACT_APP_PASS_PASS: ${{ secrets.REACT_APP_AUTH_PASS }}
+          REACT_APP_AUTH_PASS: ${{ secrets.REACT_APP_AUTH_PASS }}
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
