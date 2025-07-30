@@ -29,7 +29,11 @@ jobs:
           app_location: "/" # Root of the React app
           api_location: ""  # No backend API
           output_location: "build" # Folder after build
-          app_build_command: "npm run build"
+          app_build_command: "CI='' npm run build"
+        env:
+          REACT_APP_PASSWORD: ${{ secrets.REACT_APP_PASSWORD }}
+          REACT_APP_API_USERNAME: ${{ secrets.REACT_APP_API_USERNAME }}
+          REACT_APP_API_PASSWORD: ${{ secrets.REACT_APP_API_PASSWORD }}
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
