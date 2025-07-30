@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "./TransactionsPage.css";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import {
   deleteTransaction,
   addTransaction,
   updateTransaction,
-  filterTransactionsByDateRange,
   AddTransactionRequest,
   downloadCustomerBillPdf
 } from "@/lib/transactionsService";
@@ -115,7 +114,7 @@ export default function TransactionsPage() {
   }, [allTransactions]);
 
   // Load all transactions from the API
-  const loadAllTransactions = async () => {
+  const loadAllTransactions = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -140,10 +139,10 @@ export default function TransactionsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedMonth, selectedYear]);
 
   // Organize transactions by month
-  const organizeTransactionsByMonth = () => {
+  const organizeTransactionsByMonth = useCallback(() => {
     const monthData: Record<string, Transaction[]> = {};
 
     // Group transactions by month and year
@@ -168,7 +167,18 @@ export default function TransactionsPage() {
     });
 
     setMonthlyData(monthData);
-  };
+  }, [allTransactions]);
+
+  // Load data on component mount
+  useEffect(() => {
+    loadAllTransactions();
+    loadCustomers();
+  }, [loadAllTransactions]);
+
+  // Effect to organize transactions by month when all transactions change
+  useEffect(() => {
+    organizeTransactionsByMonth();
+  }, [organizeTransactionsByMonth]);
 
   // Get unique months and years from transactions
   const getAvailableMonthsYears = (): { month: number; year: number }[] => {

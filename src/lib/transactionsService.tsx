@@ -1,4 +1,3 @@
-import { isImportEqualsDeclaration } from 'typescript';
 import { Transaction, Customer } from './types';
 import config from '../config';
 import authService from './authService';
@@ -380,7 +379,7 @@ export const addTransaction = async (transaction: AddTransactionRequest): Promis
     // If it's already an ISO string with time, make sure it's at 00:00:00
     if (formattedDate.includes('T')) {
       // Use the ISO string as is, assuming the component already set the correct time
-      formattedDate = formattedDate;
+      // formattedDate = formattedDate;
     } else {
       // If it's just a date without time, add 00:00:00
       const dateObj = new Date(formattedDate);
