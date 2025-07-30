@@ -58,24 +58,57 @@ export default function CustomersPage() {
       return;
     }
 
-    const customerData = {
-      name,
-      phone,
-      address,
-      totalDebt: parseFloat(totalDebt),
-      createdAt
-    };
-
     try {
       if (editingCustomer) {
+        // Format the date properly for the backend
+        let formattedDate = createdAt;
+        if (!formattedDate.includes('T')) {
+          // Convert YYYY-MM-DD to ISO format
+          const date = new Date(formattedDate);
+          formattedDate = date.toISOString();
+        }
+
+        // For editing, include any required fields from the original customer
+        // But DO NOT include totalDebt when editing - the backend should maintain the debt value
+        const customerData = {
+          id: editingCustomer.id,
+          name,
+          phone: phone || undefined, // Use undefined instead of null
+          address: address || undefined, // Use undefined instead of null
+          // totalDebt is removed from here since we don't want to modify it when editing
+          createdAt: formattedDate
+        };
+
+        console.log('Updating customer with data:', customerData);
         await updateCustomer(editingCustomer.id, customerData);
       } else {
+        // Similar format for creating new customers
+        let formattedDate = createdAt;
+        if (!formattedDate.includes('T')) {
+          const date = new Date(formattedDate);
+          formattedDate = date.toISOString();
+        }
+
+        // Ensure totalDebt is correctly parsed as a number
+        const debtAmount = totalDebt === "" ? 0 : parseFloat(totalDebt);
+
+        // When creating, we do want to set the initial debt amount
+        const customerData = {
+          name,
+          phone: phone || undefined, // Use undefined instead of null
+          address: address || undefined, // Use undefined instead of null
+          totalDebt: debtAmount, // Use the parsed value
+          createdAt: formattedDate
+        };
+
+        console.log('Creating customer with data:', customerData);
+        console.log('Initial debt amount:', debtAmount, 'from input value:', totalDebt);
         await createCustomer(customerData);
       }
-      
+
       // Reset form fields
       resetForm();
-      
+
       // Reload the customer list
       loadCustomers();
     } catch (error) {
@@ -114,7 +147,18 @@ export default function CustomersPage() {
     setPhone(customer.phone || "");
     setAddress(customer.address || "");
     setTotalDebt(customer.totalDebt?.toString() || "0");
-    setcreatedAt(customer.createdAt || new Date().toISOString().substring(0, 10));
+
+    // Format the date from ISO to YYYY-MM-DD for the date input
+    if (customer.createdAt) {
+      const date = new Date(customer.createdAt);
+      const formattedDate = date.toISOString().substring(0, 10);
+      setcreatedAt(formattedDate);
+    } else {
+      setcreatedAt(new Date().toISOString().substring(0, 10));
+    }
+
+    // Log the customer being edited to help with debugging
+    console.log('Editing customer:', customer);
   };
 
   const resetForm = () => {
@@ -168,16 +212,25 @@ export default function CustomersPage() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Total Debt</label>
-              <TextBox
-                name="totalDebt"
-                type="number"
-                placeholder="Enter total debt"
-                value={totalDebt}
-                onChange={(e) => setTotalDebt(e.target.value)}
-              />
-            </div>
+            {/* Only show the Total Debt field when adding a new customer (not when editing) */}
+            {!editingCustomer && (
+              <div className="form-group">
+                <label className="form-label">Initial Debt</label>
+                <TextBox
+                  name="totalDebt"
+                  type="number"
+                  step="0.01" // Add step attribute to handle decimal values properly
+                  placeholder="Enter initial debt"
+                  value={totalDebt}
+                  onChange={(e) => {
+                    // Make sure we're handling the numeric input properly
+                    const value = e.target.value;
+                    console.log('Setting debt value:', value);
+                    setTotalDebt(value);
+                  }}
+                />
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Last Transaction Date</label>
@@ -190,18 +243,18 @@ export default function CustomersPage() {
             </div>
 
             <div className="form-buttons">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="button button-primary"
                 disabled={isSubmitting}
               >
-                {isSubmitting 
-                  ? (editingCustomer ? "Updating..." : "Adding...") 
+                {isSubmitting
+                  ? (editingCustomer ? "Updating..." : "Adding...")
                   : (editingCustomer ? "Update Customer" : "Add Customer")}
               </Button>
-              
+
               {editingCustomer && (
-                <Button 
+                <Button
                   type="button"
                   className="button button-secondary"
                   onClick={resetForm}
@@ -218,7 +271,7 @@ export default function CustomersPage() {
       <Card className="card">
         <CardContent className="card-content">
           <h2>Customers List</h2>
-          
+
           {isLoading ? (
             <div className="loading-message">Loading customers...</div>
           ) : customers.length === 0 ? (
@@ -249,8 +302,8 @@ export default function CustomersPage() {
                       </td>
                       <td>{formatDate(customer.createdAt)}</td>
                       <td>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           className="button button-primary"
                           onClick={() => handleEdit(customer)}
                           disabled={isLoading}

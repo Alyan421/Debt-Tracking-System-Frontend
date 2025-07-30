@@ -5,7 +5,7 @@ import config from '../config';
  */
 const authService = {
   /**
-   * Creates a Basic Auth header value
+   * Creates a Basic Auth header value using the configured credentials
    */
   getBasicAuthHeader: () => {
     const { username, password } = config.auth;
@@ -14,11 +14,13 @@ const authService = {
   },
   
   /**
-   * Check if user is authenticated by verifying credentials against the backend
+   * Verify if the current credentials work by making a test API request
+   * This is useful to check if the configured credentials are valid
    */
-  verifyAuth: async () => {
+  verifyCredentials: async () => {
     try {
-      const response = await fetch(`${config.apiUrl}/api/auth/verify`, {
+      // Try to access any protected endpoint
+      const response = await fetch(`${config.apiUrl}/api/Customer`, {
         method: 'GET',
         headers: {
           'Authorization': authService.getBasicAuthHeader(),
@@ -28,30 +30,31 @@ const authService = {
       
       return response.ok;
     } catch (error) {
-      console.error('Auth verification failed:', error);
+      console.error('Credentials verification failed:', error);
       return false;
     }
   },
   
   /**
-   * Store authentication state in session storage
+   * Store a flag in session storage indicating the user has completed the app login flow
+   * This is for the frontend UI access control only, not for API auth
    */
-  setAuthenticated: (isAuthenticated: boolean) => {
-    sessionStorage.setItem('isAuthenticated', isAuthenticated ? 'true' : 'false');
+  setFrontendAuthenticated: (isAuthenticated: boolean) => {
+    sessionStorage.setItem('frontendAuthenticated', isAuthenticated ? 'true' : 'false');
   },
   
   /**
-   * Check if user is authenticated from session storage
+   * Check if user has completed the frontend login flow
    */
-  isAuthenticated: () => {
-    return sessionStorage.getItem('isAuthenticated') === 'true';
+  isFrontendAuthenticated: () => {
+    return sessionStorage.getItem('frontendAuthenticated') === 'true';
   },
   
   /**
-   * Log out user by clearing authentication state
+   * Log out from the frontend (this doesn't affect API auth which is stateless)
    */
-  logout: () => {
-    sessionStorage.removeItem('isAuthenticated');
+  frontendLogout: () => {
+    sessionStorage.removeItem('frontendAuthenticated');
   }
 };
 

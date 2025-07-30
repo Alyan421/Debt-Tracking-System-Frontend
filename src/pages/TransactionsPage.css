@@ -2,6 +2,10 @@
 .transactions-page {
   padding: 16px;
   font-family: Arial, sans-serif;
+  /* Make sure the page doesn't push content to the right */
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 /* Header styles */
@@ -12,17 +16,22 @@
   text-align: center;
 }
 
-/* Card styles */
+/* Card styles - ensure they don't overflow */
 .card {
   margin-bottom: 24px;
   border: 1px solid #ddd;
   border-radius: 8px;
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .card-content {
   padding: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Form styles */
@@ -182,10 +191,57 @@ form .button {
   overflow-x: auto;
 }
 
+/* Add these styles to your TransactionsPage.css file */
+
+/* Bill Generation Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #333;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.bill-customer-info {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.bill-customer-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
 /* Mobile Styles */
 @media (max-width: 768px) {
   .transactions-page {
     padding: 12px;
+    margin-left: 0; /* Remove margin on mobile */
   }
   
   .card-content {
@@ -232,6 +288,19 @@ form .button {
   
   .card h2 {
     font-size: 18px;
+  }
+
+    .modal-content {
+    width: 95%;
+    padding: 1.5rem;
+  }
+  
+  .form-buttons {
+    flex-direction: column;
+  }
+  
+  .form-buttons > button {
+    margin-bottom: 0.5rem;
   }
 }
 
@@ -365,6 +434,13 @@ form .button {
   margin-bottom: 16px;
   gap: 8px;
 }
+.year-selector, .month-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
 
 .year-button {
   padding: 6px 12px;
@@ -387,12 +463,6 @@ form .button {
     padding-bottom: 8px;
     justify-content: flex-start;
     -webkit-overflow-scrolling: touch;
-  }
-  
-  .month-button {
-    flex: 0 0 auto;
-    font-size: 12px;
-    padding: 6px 10px;
   }
   
   .summary-item {

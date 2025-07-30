@@ -16,8 +16,8 @@ const config = {
    * Basic auth credentials for backend API
    */
   auth: {
-    username: process.env.REACT_APP_API_USERNAME || 'admin',
-    password: process.env.REACT_APP_API_PASSWORD || 'password',
+    username: process.env.REACT_APP_AUTH_USER || 'admin',
+    password: process.env.REACT_APP_AUTH_PASS || 'password',
   },
   
   /**

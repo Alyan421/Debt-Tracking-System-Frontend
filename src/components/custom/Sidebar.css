@@ -1,9 +1,14 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh; /* Use viewport height to ensure full height */
   width: 250px;
   background-color: #1a202c;
+  position: fixed; /* Fix position for desktop too */
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 10;
   transition: transform 0.3s ease;
 }
 
@@ -28,6 +33,7 @@
 .sidebar-nav {
   padding: 1rem;
   flex-grow: 1;
+  overflow-y: auto; /* Allow scrolling if content is too tall */
 }
 
 .sidebar-section-title {
@@ -76,6 +82,13 @@
   margin: 0;
 }
 
+/* Add this to create a layout wrapper for the main content */
+.main-content {
+  margin-left: 250px; /* Same as sidebar width */
+  min-height: 100vh;
+  width: calc(100% - 250px);
+}
+
 .mobile-toggle {
   display: none;
   position: fixed;
@@ -94,11 +107,6 @@
 /* Mobile styles */
 @media (max-width: 768px) {
   .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    z-index: 10;
     transform: translateX(-100%);
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
   }
@@ -126,5 +134,11 @@
   
   .mobile-overlay.active {
     display: block;
+  }
+  
+  /* Reset margin for mobile */
+  .main-content {
+    margin-left: 0;
+    width: 100%;
   }
 }

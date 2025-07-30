@@ -13,7 +13,8 @@ import {
   addTransaction,
   updateTransaction,
   filterTransactionsByDateRange,
-  AddTransactionRequest
+  AddTransactionRequest,
+  downloadCustomerBillPdf
 } from "@/lib/transactionsService";
 import { fetchAllCustomers } from "@/lib/customerService";
 import { Transaction, Customer } from "@/lib/types";
@@ -33,17 +34,24 @@ const getMonthDateRange = (month: number, year: number): { startDate: string; en
   const startDate = new Date(year, month, 1);
   // Last day of month
   const endDate = new Date(year, month + 1, 0);
-  
+
   return {
     startDate: startDate.toISOString().substring(0, 10),
     endDate: endDate.toISOString().substring(0, 10)
   };
 };
 
+// Also update the getMonthTransactions function to sort the filtered results
 const getMonthTransactions = (transactions: Transaction[], month: number, year: number): Transaction[] => {
-  return transactions.filter(transaction => {
+  // First filter by month and year
+  const filtered = transactions.filter(transaction => {
     const transactionDate = new Date(transaction.date);
     return transactionDate.getMonth() === month && transactionDate.getFullYear() === year;
+  });
+
+  // Then sort by date in descending order
+  return filtered.sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
 };
 
@@ -51,7 +59,7 @@ export default function TransactionsPage() {
   // Original state variables
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  
+
   const [filterOption, setFilterOption] = useState<string>("none");
   const [filterCustomer, setFilterCustomer] = useState<string>("");
   const [filterStartDate, setFilterStartDate] = useState<string>(
@@ -60,7 +68,7 @@ export default function TransactionsPage() {
   const [filterEndDate, setFilterEndDate] = useState<string>(
     new Date().toISOString().substring(0, 10)
   );
-  
+
   const [customerName, setCustomerName] = useState<string>("");
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [transactionType, setTransactionType] = useState<"Credit" | "Debit">("Debit");
@@ -69,12 +77,12 @@ export default function TransactionsPage() {
   const [date, setDate] = useState<string>(
     new Date().toISOString().substring(0, 10)
   );
-  
+
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  
+
   // New state variables for month filtering
   const { month: currentMonth, year: currentYear } = getCurrentMonthYear();
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
@@ -84,26 +92,45 @@ export default function TransactionsPage() {
   });
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [monthlyData, setMonthlyData] = useState<Record<string, Transaction[]>>({});
-  
+
+  const [showBillModal, setShowBillModal] = useState<boolean>(false);
+  const [billCustomerId, setBillCustomerId] = useState<number | null>(null);
+  const [billCustomerName, setBillCustomerName] = useState<string>("");
+  const [billStartDate, setBillStartDate] = useState<string>(
+    new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().substring(0, 10)
+  );
+  const [billEndDate, setBillEndDate] = useState<string>(
+    new Date().toISOString().substring(0, 10)
+  );
+
   // Load data on component mount
   useEffect(() => {
     loadAllTransactions();
     loadCustomers();
   }, []);
-  
+
   // Effect to organize transactions by month when all transactions change
   useEffect(() => {
     organizeTransactionsByMonth();
   }, [allTransactions]);
-  
+
   // Load all transactions from the API
   const loadAllTransactions = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const data = await fetchTransactions();
-      setAllTransactions(data);
-      setTransactions(getMonthTransactions(data, selectedMonth, selectedYear));
+
+      // Sort all transactions by date in descending order (newest first)
+      const sortedData = [...data].sort((a, b) => {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+
+      setAllTransactions(sortedData);
+
+      // Also sort the monthly transactions
+      const monthlyTransactions = getMonthTransactions(sortedData, selectedMonth, selectedYear);
+      setTransactions(monthlyTransactions);
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
@@ -114,36 +141,43 @@ export default function TransactionsPage() {
       setIsLoading(false);
     }
   };
-  
+
   // Organize transactions by month
   const organizeTransactionsByMonth = () => {
     const monthData: Record<string, Transaction[]> = {};
-    
+
     // Group transactions by month and year
     allTransactions.forEach(transaction => {
       const date = new Date(transaction.date);
       const month = date.getMonth();
       const year = date.getFullYear();
       const key = `${month}-${year}`;
-      
+
       if (!monthData[key]) {
         monthData[key] = [];
       }
-      
+
       monthData[key].push(transaction);
     });
-    
+
+    // Sort transactions within each month by date in descending order
+    Object.keys(monthData).forEach(key => {
+      monthData[key].sort((a, b) => {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+    });
+
     setMonthlyData(monthData);
   };
-  
+
   // Get unique months and years from transactions
   const getAvailableMonthsYears = (): { month: number; year: number }[] => {
     const uniqueMonthYears = new Set<string>();
     const result: { month: number; year: number }[] = [];
-    
+
     // Add current month even if no transactions
     uniqueMonthYears.add(`${currentMonth}-${currentYear}`);
-    
+
     // Add all months with transactions
     allTransactions.forEach(transaction => {
       const date = new Date(transaction.date);
@@ -151,28 +185,28 @@ export default function TransactionsPage() {
       const year = date.getFullYear();
       uniqueMonthYears.add(`${month}-${year}`);
     });
-    
+
     // Convert to array and sort
     Array.from(uniqueMonthYears).forEach(key => {
       const [month, year] = key.split('-').map(Number);
       result.push({ month, year });
     });
-    
+
     // Sort by year and month (most recent first)
     result.sort((a, b) => {
       if (a.year !== b.year) return b.year - a.year;
       return b.month - a.month;
     });
-    
+
     return result;
   };
-  
+
   // Calculate monthly summary
   const calculateMonthlySummary = (monthTransactions: Transaction[]) => {
     let totalCredit = 0;
     let totalDebit = 0;
     let count = 0;
-    
+
     monthTransactions.forEach(transaction => {
       count++;
       if (transaction.type === "Credit") {
@@ -181,12 +215,12 @@ export default function TransactionsPage() {
         totalDebit += transaction.amount;
       }
     });
-    
+
     const netAmount = totalDebit - totalCredit;
-    
+
     return { totalCredit, totalDebit, netAmount, count };
   };
-  
+
   // Toggle month expansion
   const toggleMonthExpansion = (month: number, year: number) => {
     const key = `${month}-${year}`;
@@ -195,41 +229,41 @@ export default function TransactionsPage() {
       [key]: !prev[key]
     }));
   };
-  
+
   // Change selected month
   const changeMonth = (month: number, year: number) => {
     setSelectedMonth(month);
     setSelectedYear(year);
-    
+
     // Update filter dates to match the selected month
     const { startDate, endDate } = getMonthDateRange(month, year);
     setFilterStartDate(startDate);
     setFilterEndDate(endDate);
-    
+
     // Update transactions shown based on selected month
     setTransactions(getMonthTransactions(allTransactions, month, year));
-    
+
     // Expand the selected month
     setExpandedMonths(prev => ({
       ...prev,
       [`${month}-${year}`]: true
     }));
   };
-  
+
   // Increment/decrement year
   const changeYear = (increment: number) => {
     const newYear = selectedYear + increment;
     setSelectedYear(newYear);
-    
+
     // Update filter dates to match the selected month and new year
     const { startDate, endDate } = getMonthDateRange(selectedMonth, newYear);
     setFilterStartDate(startDate);
     setFilterEndDate(endDate);
-    
+
     // Update transactions shown based on selected month and new year
     setTransactions(getMonthTransactions(allTransactions, selectedMonth, newYear));
   };
-  
+
   const loadCustomers = async () => {
     try {
       const data = await fetchAllCustomers();
@@ -244,7 +278,7 @@ export default function TransactionsPage() {
       loadAllTransactions();
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
     try {
@@ -326,33 +360,42 @@ export default function TransactionsPage() {
     }
 
     try {
+      // Format the date to be at the start of the day (00:00:00)
+      let formattedDate = date;
+      if (!formattedDate.includes('T')) {
+        // Parse the date and set time to 00:00:00
+        const dateObj = new Date(formattedDate);
+        dateObj.setHours(0, 0, 0, 0);  // Set to beginning of day
+        formattedDate = dateObj.toISOString();
+      }
+
       const transactionData: AddTransactionRequest = {
-        customerId: customerId as number,
+        customerId: Number(customerId),
         customerName,
         type: transactionType as "Credit" | "Debit",
         amount: parseFloat(amount),
         description,
-        date
+        date: formattedDate // Use the formatted date with time set to 00:00:00
       };
 
       if (editingTransaction) {
         // Wait for the update to complete
         const updatedTransaction = await updateTransaction(editingTransaction.id, transactionData);
         console.log("Transaction updated successfully:", updatedTransaction);
-        
+
         // Force a reload of all transactions to refresh the UI
         await loadAllTransactions();
-        
+
         // Reset form state after successful update
         resetForm();
       } else {
         // Wait for the add to complete
         const newTransaction = await addTransaction(transactionData);
         console.log("Transaction added successfully:", newTransaction);
-        
+
         // Force a reload of all transactions to refresh the UI
         await loadAllTransactions();
-        
+
         // Reset form state after successful add
         resetForm();
       }
@@ -374,7 +417,17 @@ export default function TransactionsPage() {
     setTransactionType(transaction.type);
     setAmount(transaction.amount.toString());
     setDescription(transaction.description);
-    setDate(transaction.date);
+
+    // Format the date from ISO to YYYY-MM-DD for the date input
+    if (transaction.date) {
+      const date = new Date(transaction.date);
+      const formattedDate = date.toISOString().substring(0, 10);
+      setDate(formattedDate);
+    } else {
+      setDate(new Date().toISOString().substring(0, 10));
+    }
+
+    console.log('Editing transaction:', transaction);
   };
 
   const resetForm = () => {
@@ -412,6 +465,45 @@ export default function TransactionsPage() {
         label: customer.name
       }))
     ];
+  };
+
+  //Generate Bill
+  const handleGenerateBill = async () => {
+    if (!billCustomerId) {
+      setError("Please select a customer");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await downloadCustomerBillPdf(billCustomerId, billStartDate, billEndDate);
+      setShowBillModal(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("An unknown error occurred while generating the bill");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Add this function to open the bill modal
+  const openBillModal = (customerId: number, customerName: string) => {
+    setBillCustomerId(customerId);
+    setBillCustomerName(customerName);
+
+    // Default to current month
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    setBillStartDate(firstDayOfMonth.toISOString().substring(0, 10));
+    setBillEndDate(today.toISOString().substring(0, 10));
+
+    setShowBillModal(true);
   };
 
   // Event handlers for dropdowns
@@ -521,18 +613,18 @@ export default function TransactionsPage() {
             </div>
 
             <div className="form-buttons">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="button button-primary"
                 disabled={isSubmitting}
               >
-                {isSubmitting 
-                  ? (editingTransaction ? "Updating..." : "Adding...") 
+                {isSubmitting
+                  ? (editingTransaction ? "Updating..." : "Adding...")
                   : (editingTransaction ? "Update Transaction" : "Add Transaction")}
               </Button>
-              
+
               {editingTransaction && (
-                <Button 
+                <Button
                   type="button"
                   className="button button-secondary"
                   onClick={resetForm}
@@ -594,20 +686,38 @@ export default function TransactionsPage() {
             )}
 
             <div className="filter-buttons">
-              <Button 
-                onClick={handleFilter} 
+              <Button
+                onClick={handleFilter}
                 className="button button-primary"
                 disabled={isLoading}
               >
                 Apply Filter
               </Button>
-              <Button 
-                onClick={handleDownload} 
+              <Button
+                onClick={handleDownload}
                 className="button button-secondary"
                 disabled={isLoading}
               >
                 Download
               </Button>
+
+              {/* Add the Generate Bill button only when a customer is selected */}
+              {(filterOption === "customer" || filterOption === "both") && filterCustomer && (
+                <Button
+                  onClick={() => {
+                    const customer = customers.find(c => c.name === filterCustomer);
+                    if (customer) {
+                      openBillModal(customer.id, customer.name);
+                    } else {
+                      setError("Please select a valid customer first");
+                    }
+                  }}
+                  className="button button-secondary"
+                  disabled={isLoading}
+                >
+                  Generate Bill PDF
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -617,7 +727,7 @@ export default function TransactionsPage() {
       <Card className="card">
         <CardContent className="card-content">
           <h2>Transactions for {getMonthName(selectedMonth)} {selectedYear}</h2>
-          
+
           {isLoading ? (
             <div className="loading-message">Loading transactions...</div>
           ) : transactions.length === 0 ? (
@@ -652,7 +762,7 @@ export default function TransactionsPage() {
                   );
                 })()}
               </div>
-              
+
               <div className="table-container">
                 <table className="transactions-table">
                   <thead>
@@ -678,8 +788,8 @@ export default function TransactionsPage() {
                         <td>{transaction.description}</td>
                         <td>{formatDate(transaction.date)}</td>
                         <td>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             className="button button-primary"
                             onClick={() => handleEdit(transaction)}
                             disabled={isLoading}
@@ -704,7 +814,7 @@ export default function TransactionsPage() {
           )}
         </CardContent>
       </Card>
-      
+
       {/* Historical Months Section */}
       <h2>Transaction History</h2>
       {getAvailableMonthsYears()
@@ -714,11 +824,11 @@ export default function TransactionsPage() {
           const isExpanded = expandedMonths[key] || false;
           const monthTransactions = monthlyData[key] || [];
           const summary = calculateMonthlySummary(monthTransactions);
-          
+
           return (
             <div key={key} className="month-section">
-              <div 
-                className="month-header" 
+              <div
+                className="month-header"
                 onClick={() => toggleMonthExpansion(month, year)}
               >
                 <h3>{getMonthName(month)} {year} ({summary.count} transactions)</h3>
@@ -726,7 +836,7 @@ export default function TransactionsPage() {
                   {isExpanded ? '▼' : '►'}
                 </button>
               </div>
-              
+
               {isExpanded && monthTransactions.length > 0 && (
                 <div className="month-content">
                   <div className="month-summary">
@@ -745,7 +855,7 @@ export default function TransactionsPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="table-container">
                     <table className="transactions-table">
                       <thead>
@@ -771,8 +881,8 @@ export default function TransactionsPage() {
                             <td>{transaction.description}</td>
                             <td>{formatDate(transaction.date)}</td>
                             <td>
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 className="button button-primary"
                                 onClick={() => handleEdit(transaction)}
                                 disabled={isLoading}
@@ -798,6 +908,52 @@ export default function TransactionsPage() {
             </div>
           );
         })}
+
+      {/* Bill Generation Modal */}
+      {showBillModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>Generate Bill PDF</h2>
+            <div className="bill-customer-info">
+              <span className="bill-customer-name">Customer: {billCustomerName}</span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Start Date:</label>
+              <TextBox
+                type="date"
+                value={billStartDate}
+                onChange={(e) => setBillStartDate(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">End Date:</label>
+              <TextBox
+                type="date"
+                value={billEndDate}
+                onChange={(e) => setBillEndDate(e.target.value)}
+              />
+            </div>
+
+            <div className="form-buttons">
+              <Button
+                onClick={handleGenerateBill}
+                className="button button-primary"
+                disabled={isLoading}
+              >
+                {isLoading ? "Generating..." : "Generate Bill PDF"}
+              </Button>
+              <Button
+                onClick={() => setShowBillModal(false)}
+                className="button button-secondary"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,33 +1,75 @@
+/* Reset some default browser styles */
+* {
+  box-sizing: border-box;
+}
+
+/* Set up the main layout container */
 .layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden; /* Prevent horizontal scrolling */
+}
+
+/* Style the content container that sits next to the sidebar */
+.content {
+  flex: 1;
+  margin-left: 250px; /* Match sidebar width */
+  width: calc(100% - 250px);
+  overflow-y: auto; /* Allow vertical scrolling */
   position: relative;
 }
 
-.layout-content {
-  flex: 1;
-  margin-left: 250px;
-  padding: 20px;
-  background-color: #f8f9fa;
-  min-height: 100vh;
-  transition: margin-left 0.3s ease;
+/* Style the header */
+.content header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-.content-wrapper {
-  max-width: 1200px;
-  margin: 0 auto;
+.content header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+/* Style the main content area */
+.content main {
+  padding: 0; /* Let the individual page components handle their padding */
 }
 
 /* Mobile styles */
 @media (max-width: 768px) {
-  .layout-content {
+  .content {
     margin-left: 0;
+    width: 100%;
+  }
+  
+  .content header {
     padding-top: 60px; /* Space for the mobile toggle button */
   }
 }
 
-/* Add these styles to your existing App.css */
+/* Login button */
+.logout-button {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
 
+.logout-button:hover {
+  background-color: #d32f2f;
+}
+
+/* Login container */
 .login-container {
   max-width: 400px;
   margin: 100px auto;
@@ -61,17 +103,4 @@
 .error {
   color: red;
   margin-bottom: 15px;
-}
-
-.logout-button {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.logout-button:hover {
-  background-color: #d32f2f;
 }

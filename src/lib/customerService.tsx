@@ -1,30 +1,41 @@
-import { Customer } from "@/lib/types";    
-import config from "config";
+import { Customer } from "@/lib/types";
+import config from "../config";
+import authService from "./authService";
 
 // Get the base URL from environment variables
 const BASE_URL = config.apiUrl;
 const API_URL = `${BASE_URL}/api/Customer`;
+
+// Function to get headers with authentication
+const getHeaders = () => {
+  return {
+    'Authorization': authService.getBasicAuthHeader(),
+    'Content-Type': 'application/json'
+  };
+};
 
 /**
  * Fetches all customers from the API
  */
 export const fetchAllCustomers = async (): Promise<Customer[]> => {
   try {
-    const response = await fetch(API_URL);
-    
+    const response = await fetch(API_URL, {
+      headers: getHeaders()
+    });
+
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
-    
+
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       throw new Error("Server did not return JSON. Received: " + contentType);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error("Failed to fetch customers:", error);
-    throw error; // Remove the fallback to empty array to properly handle errors
+    throw error;
   }
 };
 
@@ -33,21 +44,23 @@ export const fetchAllCustomers = async (): Promise<Customer[]> => {
  */
 export const fetchCustomerById = async (id: number): Promise<Customer | null> => {
   try {
-    const response = await fetch(`${API_URL}/${id}`);
-    
+    const response = await fetch(`${API_URL}/${id}`, {
+      headers: getHeaders()
+    });
+
     if (response.status === 404) {
       return null; // Customer not found
     }
-    
+
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
-    
+
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       throw new Error("Server did not return JSON. Received: " + contentType);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Failed to fetch customer with id ${id}:`, error);
@@ -62,21 +75,19 @@ export const createCustomer = async (customer: Omit<Customer, "id">): Promise<Cu
   try {
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: getHeaders(),
       body: JSON.stringify(customer)
     });
-    
+
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
-    
+
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       throw new Error("Server did not return JSON. Received: " + contentType);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error("Failed to create customer:", error);
@@ -89,23 +100,47 @@ export const createCustomer = async (customer: Omit<Customer, "id">): Promise<Cu
  */
 export const updateCustomer = async (id: number, customerData: Partial<Customer>): Promise<Customer> => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(customerData)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    // Format the data exactly as expected by the backend
+    const formattedData = {
+      id: id,
+      name: customerData.name,
+      phone: customerData.phone || null,
+      address: customerData.address || null,
+      createdAt: customerData.createdAt
+    };
+
+    // Ensure createdAt is in ISO format
+    if (formattedData.createdAt && !formattedData.createdAt.includes('T')) {
+      // Convert YYYY-MM-DD to ISO format
+      const date = new Date(formattedData.createdAt);
+      formattedData.createdAt = date.toISOString();
     }
-    
+
+    console.log('Updating customer with formatted data:', formattedData);
+
+    const response = await fetch(API_URL, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(formattedData)
+    });
+
+    if (!response.ok) {
+      // Try to get more detailed error information
+      let errorText = '';
+      try {
+        errorText = await response.text();
+      } catch (e) {
+        // Ignore error reading response text
+      }
+
+      throw new Error(`Error ${response.status}: ${response.statusText} ${errorText ? '- ' + errorText : ''}`);
+    }
+
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       throw new Error("Server did not return JSON. Received: " + contentType);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Failed to update customer with id ${id}:`, error);
@@ -119,9 +154,10 @@ export const updateCustomer = async (id: number, customerData: Partial<Customer>
 export const deleteCustomer = async (id: number): Promise<void> => {
   try {
     const response = await fetch(`${API_URL}/${id}`, {
-      method: "DELETE"
+      method: "DELETE",
+      headers: getHeaders()
     });
-    
+
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
@@ -136,17 +172,19 @@ export const deleteCustomer = async (id: number): Promise<void> => {
  */
 export const searchCustomers = async (query: string): Promise<Customer[]> => {
   try {
-    const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
-    
+    const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`, {
+      headers: getHeaders()
+    });
+
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
-    
+
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       throw new Error("Server did not return JSON. Received: " + contentType);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Failed to search customers with query "${query}":`, error);
@@ -159,17 +197,19 @@ export const searchCustomers = async (query: string): Promise<Customer[]> => {
  */
 export const getCustomerTransactions = async (customerId: number): Promise<any[]> => {
   try {
-    const response = await fetch(`${API_URL}/${customerId}/transactions`);
-    
+    const response = await fetch(`${API_URL}/${customerId}/transactions`, {
+      headers: getHeaders()
+    });
+
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
-    
+
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       throw new Error("Server did not return JSON. Received: " + contentType);
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error(`Failed to get transactions for customer with id ${customerId}:`, error);

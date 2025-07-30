@@ -2,7 +2,12 @@
 .customers-page {
   padding: 16px;
   font-family: Arial, sans-serif;
+  /* Make sure the page doesn't push content to the right */
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0;
 }
+
 
 /* Header styles */
 .customers-page h1 {
@@ -19,10 +24,15 @@
   border-radius: 8px;
   background-color: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .card-content {
   padding: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Form styles */
@@ -54,12 +64,13 @@
 .table-container {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .customers-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 16px;
+  min-width: 650px; /* Ensure the table doesn't get too squished */
 }
 
 .customers-table th,
@@ -151,6 +162,7 @@
 @media (max-width: 768px) {
   .customers-page {
     padding: 12px;
+    margin-left: 0; /* Remove margin on mobile */
   }
   
   .card-content {

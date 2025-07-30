@@ -1,12 +1,20 @@
 import { isImportEqualsDeclaration } from 'typescript';
 import { Transaction, Customer } from './types';
-import config from '../config'; // Adjust the import path as necessary
+import config from '../config';
+import authService from './authService';
 
 // Get the base URL from environment variables
 const BASE_URL = config.apiUrl;
 const API_URL = `${BASE_URL}/api/Transaction`;
 const CUSTOMERS_API_URL = `${BASE_URL}/api/Customer`;
 
+// Function to get headers with authentication
+const getHeaders = () => {
+  return {
+    'Authorization': authService.getBasicAuthHeader(),
+    'Content-Type': 'application/json'
+  };
+};
 
 const enrichTransactionsWithCustomerNames = async (transactions: Transaction[]): Promise<Transaction[]> => {
   // If all transactions already have customer names, return as is
@@ -41,15 +49,16 @@ const enrichTransactionsWithCustomerNames = async (transactions: Transaction[]):
   }
 };
 
-
-
 /**
  * Fetches all transactions from the API
  */
 export const fetchTransactions = async (): Promise<Transaction[]> => {
   try {
     // GET /api/Transaction
-    const response = await fetch(API_URL);
+    const response = await fetch(API_URL, {
+      headers: getHeaders()
+    });
+    
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
@@ -68,14 +77,15 @@ export const fetchTransactions = async (): Promise<Transaction[]> => {
   }
 };
 
-
 /**
  * Fetches a single transaction by ID
  */
 export const fetchTransactionById = async (id: number): Promise<Transaction | null> => {
   try {
     // GET /api/Transaction/{id}
-    const response = await fetch(`${API_URL}/${id}`);
+    const response = await fetch(`${API_URL}/${id}`, {
+      headers: getHeaders()
+    });
     
     if (response.status === 404) {
       return null; // Transaction not found
@@ -103,7 +113,10 @@ export const fetchTransactionById = async (id: number): Promise<Transaction | nu
  */
 export const fetchCustomers = async (): Promise<Customer[]> => {
   try {
-    const response = await fetch(`${CUSTOMERS_API_URL}`);
+    const response = await fetch(`${CUSTOMERS_API_URL}`, {
+      headers: getHeaders()
+    });
+    
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
@@ -123,13 +136,12 @@ export const fetchCustomers = async (): Promise<Customer[]> => {
 /**
  * Filters transactions based on customer ID
  */
-
-
-// Update the filterTransactionsByCustomer function to ensure customer names are included
 export const filterTransactionsByCustomer = async (customerId: number): Promise<Transaction[]> => {
   try {
     // GET /api/Transaction/filter-by-customer/{customerId}
-    const response = await fetch(`${API_URL}/filter-by-customer/${customerId}`);
+    const response = await fetch(`${API_URL}/filter-by-customer/${customerId}`, {
+      headers: getHeaders()
+    });
     
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -155,11 +167,34 @@ export const filterTransactionsByDateRange = async (
   endDate: string
 ): Promise<Transaction[]> => {
   try {
+    // Properly convert dates to UTC ISO format
+    let formattedStartDate = startDate;
+    let formattedEndDate = endDate;
+    
+    // Create UTC dates
+    if (!formattedStartDate.includes('Z')) { // Z indicates UTC timezone
+      const startDateObj = new Date(formattedStartDate);
+      formattedStartDate = startDateObj.toISOString(); // This is in UTC by default
+    }
+    
+    if (!formattedEndDate.includes('Z')) {
+      const endDateObj = new Date(formattedEndDate);
+      // Set to end of day in UTC
+      endDateObj.setUTCHours(23, 59, 59, 999);
+      formattedEndDate = endDateObj.toISOString();
+    }
+    
+    console.log('Filter dates (UTC):', { formattedStartDate, formattedEndDate });
+    
     // GET /api/Transaction/filter-by-date-range
-    const url = `${API_URL}/filter-by-date-range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
-    const response = await fetch(url);
+    const url = `${API_URL}/filter-by-date-range?startDate=${encodeURIComponent(formattedStartDate)}&endDate=${encodeURIComponent(formattedEndDate)}`;
+    const response = await fetch(url, {
+      headers: getHeaders()
+    });
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', errorText);
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
     
@@ -177,18 +212,41 @@ export const filterTransactionsByDateRange = async (
   }
 };
 
-// Update the filterTransactionsByCustomerAndDateRange method too
+// Also update the filterTransactionsByCustomerAndDateRange function
 export const filterTransactionsByCustomerAndDateRange = async (
   customerId: number,
   startDate: string,
   endDate: string
 ): Promise<Transaction[]> => {
   try {
+    // Properly convert dates to UTC ISO format
+    let formattedStartDate = startDate;
+    let formattedEndDate = endDate;
+    
+    // Create UTC dates
+    if (!formattedStartDate.includes('Z')) { // Z indicates UTC timezone
+      const startDateObj = new Date(formattedStartDate);
+      formattedStartDate = startDateObj.toISOString(); // This is in UTC by default
+    }
+    
+    if (!formattedEndDate.includes('Z')) {
+      const endDateObj = new Date(formattedEndDate);
+      // Set to end of day in UTC
+      endDateObj.setUTCHours(23, 59, 59, 999);
+      formattedEndDate = endDateObj.toISOString();
+    }
+    
+    console.log('Filter dates (UTC) with customer:', { customerId, formattedStartDate, formattedEndDate });
+    
     // GET /api/Transaction/filter-by-customer-and-date-range
-    const url = `${API_URL}/filter-by-customer-and-date-range?customerId=${customerId}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
-    const response = await fetch(url);
+    const url = `${API_URL}/filter-by-customer-and-date-range?customerId=${customerId}&startDate=${encodeURIComponent(formattedStartDate)}&endDate=${encodeURIComponent(formattedEndDate)}`;
+    const response = await fetch(url, {
+      headers: getHeaders()
+    });
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', errorText);
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
     
@@ -206,37 +264,61 @@ export const filterTransactionsByCustomerAndDateRange = async (
   }
 };
 
-/**
- * Downloads transactions report
- */
+//downloadTransactionsReport function
 export const downloadTransactionsReport = async (
   customerId?: number,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  type?: string
 ): Promise<void> => {
   try {
-    // GET /api/Transaction/report
+    // Use the base API URL without ID
     let url = `${API_URL}/report`;
     const params = [];
     
+    // Add type parameter - default to 'all' if not specified
+    params.push(`type=${encodeURIComponent(type || 'all')}`);
+    
+    // Add customerId parameter if provided
     if (customerId) {
       params.push(`customerId=${customerId}`);
     }
     
+    // Add date parameters if provided with UTC formatting
     if (startDate) {
-      params.push(`startDate=${encodeURIComponent(startDate)}`);
+      // Format date as UTC ISO string
+      let formattedStartDate = startDate;
+      if (!formattedStartDate.includes('Z')) { // Z indicates UTC timezone
+        const startDateObj = new Date(formattedStartDate);
+        formattedStartDate = startDateObj.toISOString(); // This is in UTC by default
+      }
+      params.push(`startDate=${encodeURIComponent(formattedStartDate)}`);
     }
     
     if (endDate) {
-      params.push(`endDate=${encodeURIComponent(endDate)}`);
+      // Format date as UTC ISO string
+      let formattedEndDate = endDate;
+      if (!formattedEndDate.includes('Z')) {
+        const endDateObj = new Date(formattedEndDate);
+        // Set to end of day in UTC
+        endDateObj.setUTCHours(23, 59, 59, 999);
+        formattedEndDate = endDateObj.toISOString();
+      }
+      params.push(`endDate=${encodeURIComponent(formattedEndDate)}`);
     }
     
-    if (params.length > 0) {
-      url += `?${params.join('&')}`;
-    }
+    // Always include query string since type is required
+    url += `?${params.join('&')}`;
 
-    const response = await fetch(url);
+    console.log('Downloading report from URL:', url);
+
+    const response = await fetch(url, {
+      headers: getHeaders()
+    });
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', errorText);
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
     
@@ -259,7 +341,8 @@ export const deleteTransaction = async (id: number): Promise<void> => {
   try {
     // DELETE /api/Transaction/{id}
     const response = await fetch(`${API_URL}/${id}`, { 
-      method: "DELETE"
+      method: "DELETE",
+      headers: getHeaders()
     });
     
     if (!response.ok) {
@@ -276,7 +359,7 @@ export const deleteTransaction = async (id: number): Promise<void> => {
  */
 export interface AddTransactionRequest {
   customerId: number;
-  customerName: string;
+  customerName?: string;
   type: "Credit" | "Debit"; // Assuming these are the only two types
   amount: number;
   description: string;
@@ -286,27 +369,51 @@ export interface AddTransactionRequest {
 /**
  * Adds a new transaction
  */
+/**
+ * Adds a new transaction
+ */
 export const addTransaction = async (transaction: AddTransactionRequest): Promise<Transaction> => {
   try {
+    // Format the date to be at the start of the day
+    let formattedDate = transaction.date;
+    
+    // If it's already an ISO string with time, make sure it's at 00:00:00
+    if (formattedDate.includes('T')) {
+      // Use the ISO string as is, assuming the component already set the correct time
+      formattedDate = formattedDate;
+    } else {
+      // If it's just a date without time, add 00:00:00
+      const dateObj = new Date(formattedDate);
+      dateObj.setHours(0, 0, 0, 0);
+      formattedDate = dateObj.toISOString();
+    }
+    
+    // Create a clean transaction object with exactly what the backend expects
+    const apiTransaction = {
+      customerId: transaction.customerId,
+      type: transaction.type,
+      amount: transaction.amount,
+      description: transaction.description,
+      date: formattedDate
+    };
+    
+    console.log('Transaction data being sent to API:', apiTransaction);
+    
     // POST /api/Transaction
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(transaction)
+      headers: getHeaders(),
+      body: JSON.stringify(apiTransaction)
     });
     
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', errorText);
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
     
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      throw new Error("Server did not return JSON. Received: " + contentType);
-    }
-    
-    return await response.json();
+    const responseData = await response.json();
+    return responseData;
   } catch (error) {
     console.error("Failed to add transaction:", error);
     throw error;
@@ -322,9 +429,7 @@ export const updateTransaction = async (id: number, transaction: Partial<Transac
     // Note: According to your API, this doesn't include ID in the URL but in the body
     const response = await fetch(API_URL, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: getHeaders(),
       body: JSON.stringify({
         id,
         ...transaction
@@ -390,7 +495,6 @@ export const filterTransactions = async (
   }
 };
 
-
 /**
  * For compatibility with older code
  */
@@ -401,8 +505,21 @@ export const downloadTransactions = async (
   filterEndDate: string
 ): Promise<void> => {
   try {
+    // Set the type based on filterOption
+    let type = 'all';
+    
+    if (filterOption === "customer") {
+      type = 'customer';
+    } else if (filterOption === "date") {
+      type = 'date';
+    } else if (filterOption === "both") {
+      type = 'both';
+    }
+    
+    console.log(`Downloading report with type: ${type}`);
+    
     if (filterOption === "none") {
-      return await downloadTransactionsReport();
+      return await downloadTransactionsReport(undefined, undefined, undefined, type);
     } else if (filterOption === "customer") {
       // Find the customer ID from the name
       const customers = await fetchCustomers();
@@ -410,9 +527,9 @@ export const downloadTransactions = async (
       if (!customer) {
         throw new Error(`Customer "${filterCustomer}" not found`);
       }
-      return await downloadTransactionsReport(customer.id);
+      return await downloadTransactionsReport(customer.id, undefined, undefined, type);
     } else if (filterOption === "date") {
-      return await downloadTransactionsReport(undefined, filterStartDate, filterEndDate);
+      return await downloadTransactionsReport(undefined, filterStartDate, filterEndDate, type);
     } else if (filterOption === "both") {
       // Find the customer ID from the name
       const customers = await fetchCustomers();
@@ -420,10 +537,77 @@ export const downloadTransactions = async (
       if (!customer) {
         throw new Error(`Customer "${filterCustomer}" not found`);
       }
-      return await downloadTransactionsReport(customer.id, filterStartDate, filterEndDate);
+      return await downloadTransactionsReport(customer.id, filterStartDate, filterEndDate, type);
     }
   } catch (error) {
     console.error("Failed to download transactions:", error);
+    throw error;
+  }
+};
+
+export const downloadCustomerBillPdf = async (
+  customerId: number,
+  startDate: string,
+  endDate: string
+): Promise<void> => {
+  try {
+    // Format dates for the API in UTC format
+    let formattedStartDate = startDate;
+    let formattedEndDate = endDate;
+    
+    // Create UTC dates
+    if (!formattedStartDate.includes('Z')) { // Z indicates UTC timezone
+      const startDateObj = new Date(formattedStartDate);
+      formattedStartDate = startDateObj.toISOString(); // This is in UTC by default
+    }
+    
+    if (!formattedEndDate.includes('Z')) {
+      const endDateObj = new Date(formattedEndDate);
+      // Set to end of day in UTC
+      endDateObj.setUTCHours(23, 59, 59, 999);
+      formattedEndDate = endDateObj.toISOString();
+    }
+    
+    // Construct API URL - we'll use a new endpoint: /api/Transaction/bill
+    let url = `${API_URL}/bill`;
+    const params = [
+      `customerId=${customerId}`,
+      `startDate=${encodeURIComponent(formattedStartDate)}`,
+      `endDate=${encodeURIComponent(formattedEndDate)}`
+    ];
+    
+    url += `?${params.join('&')}`;
+    
+    console.log('Downloading bill PDF from URL:', url);
+    
+    const response = await fetch(url, {
+      headers: getHeaders()
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Error:', errorText);
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+    
+    // For file downloads, we don't check content-type as it will be a blob
+    const blob = await response.blob();
+    
+    // Get customer name for the filename
+    const customers = await fetchCustomers();
+    const customer = customers.find(c => c.id === customerId);
+    const customerName = customer ? customer.name.replace(/\s+/g, '_') : 'customer';
+    
+    // Format date range for filename
+    const formattedDateRange = `${startDate.replace(/-/g, '')}_${endDate.replace(/-/g, '')}`;
+    
+    // Create a link to download the file
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.download = `${customerName}_bill_${formattedDateRange}.pdf`;
+    link.click();
+  } catch (error) {
+    console.error("Failed to download customer bill PDF:", error);
     throw error;
   }
 };
