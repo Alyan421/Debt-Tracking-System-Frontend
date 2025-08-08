@@ -122,22 +122,34 @@ export default function CustomersPage() {
     }
   };
 
+  // ...existing code...
+
   const handleDelete = async (id: number) => {
-    if (window.confirm("Are you sure you want to delete this customer?")) {
-      setError(null);
-      setIsLoading(true);
-      try {
-        await deleteCustomer(id);
-        loadCustomers();
-      } catch (error) {
-        if (error instanceof Error) {
-          setError(error.message);
-        } else {
-          setError("An unknown error occurred.");
-        }
-      } finally {
-        setIsLoading(false);
+    const customer = customers.find(c => c.id === id);
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete customer "${customer?.name}"?\n\n` +
+      `All transactions for this customer will also be deleted. This action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    const typed = window.prompt(
+      'Type "Yes" to confirm deletion of this customer and all their transactions:'
+    );
+    if (typed !== "Yes" && typed !== "yes") return;
+
+    setError(null);
+    setIsLoading(true);
+    try {
+      await deleteCustomer(id);
+      loadCustomers();
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("An unknown error occurred.");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
