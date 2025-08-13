@@ -76,6 +76,7 @@ export default function TransactionsPage() {
   const [date, setDate] = useState<string>(
     new Date().toISOString().substring(0, 10)
   );
+  const [isCustomerLocked, setIsCustomerLocked] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -430,8 +431,12 @@ export default function TransactionsPage() {
   };
 
   const resetForm = () => {
-    setCustomerName("");
-    setCustomerId(null);
+    // Only reset customer fields if editing a transaction or if you want to unlock after each add
+    if (editingTransaction) {
+      setCustomerName("");
+      setCustomerId(null);
+      setIsCustomerLocked(false); // Unlock when editing
+    }
     setTransactionType("Debit");
     setAmount("");
     setDescription("");
@@ -568,7 +573,30 @@ export default function TransactionsPage() {
                 value={customerName}
                 onChange={handleCustomerNameChange}
                 required
+                disabled={isCustomerLocked}
               />
+              {!isCustomerLocked ? (
+                <Button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => {
+                    if (customerName) setIsCustomerLocked(true);
+                  }}
+                  disabled={!customerName}
+                  style={{ marginTop: '8px' }}
+                >
+                  Lock Customer
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setIsCustomerLocked(false)}
+                  style={{ marginTop: '8px' }}
+                >
+                  Unlock Customer
+                </Button>
+              )}
             </div>
 
             <div className="form-group">
