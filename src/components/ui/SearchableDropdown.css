@@ -1,0 +1,88 @@
+.dropdown {
+  position: relative;
+  width: 100%;
+  max-width: 350px;
+  font-family: inherit;
+}
+
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.control:focus-within {
+  border-color: #007bff;
+}
+
+.selected-value input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 1rem;
+  background: transparent;
+  padding: 6px 28px 6px 0;
+  /* Remove browser search/cancel icons */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+
+.arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  border: solid #888;
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  padding: 4px;
+  transition: transform 0.2s;
+}
+
+.arrow.open {
+  transform: translateY(-50%) rotate(-135deg);
+}
+
+.options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: none;
+}
+
+.options.open {
+  display: block;
+}
+
+.option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.option:hover {
+  background: #f0f4fa;
+}
+
+.option.selected {
+  background: #e6f0ff;
+  font-weight: 500;
+}

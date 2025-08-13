@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TextBox } from "@/components/ui/Textbox";
 import { Dropdown } from "@/components/ui/dropdown";
 import { formatDate } from "@/lib/utils";
+import SearchableDropdown from "@/components/ui/SearchableDropdown";
 import {
   fetchTransactions,
   filterTransactions,
@@ -565,15 +566,18 @@ export default function TransactionsPage() {
         <CardContent className="card-content">
           <h2>{editingTransaction ? "Edit Transaction" : "Add Transaction"}</h2>
           <form onSubmit={handleAddTransaction} className="form-container">
-            {/* Form fields remain the same */}
             <div className="form-group">
               <label className="form-label">Customer</label>
-              <Dropdown
-                options={getCustomerOptions()}
-                value={customerName}
-                onChange={handleCustomerNameChange}
-                required
-                disabled={isCustomerLocked}
+              <SearchableDropdown
+                options={customers}
+                label="name"
+                id="add-transaction-customer"
+                selectedVal={customerName}
+                handleChange={(val: string | null) => {
+                  setCustomerName(val ?? "");
+                  const selectedCustomer = customers.find(c => c.name === val);
+                  setCustomerId(selectedCustomer?.id || null);
+                }}
               />
               {!isCustomerLocked ? (
                 <Button
@@ -682,10 +686,12 @@ export default function TransactionsPage() {
             {(filterOption === "customer" || filterOption === "both") && (
               <div className="filter-group">
                 <label className="filter-label">Customer</label>
-                <Dropdown
-                  options={getCustomerOptions()}
-                  value={filterCustomer}
-                  onChange={handleFilterCustomerChange}
+                <SearchableDropdown
+                  options={customers}
+                  label="name"
+                  id="filter-customer"
+                  selectedVal={filterCustomer}
+                  handleChange={(val: string | null) => setFilterCustomer(val ?? "")}
                 />
               </div>
             )}
