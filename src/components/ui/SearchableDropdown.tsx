@@ -8,6 +8,7 @@ interface SearchableDropdownProps<T> {
   id: string;
   selectedVal: string | null;
   handleChange: (value: string | null) => void;
+  disabled?: boolean;
 }
 
 function SearchableDropdown<T>({
@@ -16,6 +17,7 @@ function SearchableDropdown<T>({
   id,
   selectedVal,
   handleChange,
+  disabled = false,
 }: SearchableDropdownProps<T>) {
   const [query, setQuery] = useState<string>("");
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -50,7 +52,7 @@ function SearchableDropdown<T>({
   };
 
   return (
-    <div className="dropdown">
+    <div className={`dropdown ${disabled ? 'disabled' : ''}`}>
       <div className="control">
         <div className="selected-value">
           <input
@@ -59,29 +61,34 @@ function SearchableDropdown<T>({
             value={getDisplayValue()}
             name="searchTerm"
             autoComplete="off"
+            disabled={disabled}
             style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none' }}
             onChange={(e) => {
-              setQuery(e.target.value);
-              handleChange(null);
+              if (!disabled) {
+                setQuery(e.target.value);
+                handleChange(null);
+              }
             }}
-            onClick={() => setIsOpen(true)}
+            onClick={() => !disabled && setIsOpen(true)}
           />
         </div>
         <div
           className={`arrow ${isOpen ? "open" : ""}`}
           onClick={e => {
-            e.stopPropagation();
-            setIsOpen((prev) => !prev);
-            if (!isOpen && inputRef.current) inputRef.current.focus();
+            if (!disabled) {
+              e.stopPropagation();
+              setIsOpen((prev) => !prev);
+              if (!isOpen && inputRef.current) inputRef.current.focus();
+            }
           }}
           role="button"
-          tabIndex={0}
+          tabIndex={disabled ? -1 : 0}
           aria-label="Toggle dropdown"
         ></div>
       </div>
 
-      <div className={`options ${isOpen ? "open" : ""}`}>
-        {filter(options).map((option, index) => (
+      <div className={`options ${isOpen && !disabled ? "open" : ""}`}>
+        {!disabled && filter(options).map((option, index) => (
           <div
             onClick={() => selectOption(option)}
             className={`option ${

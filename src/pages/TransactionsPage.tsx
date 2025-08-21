@@ -3,9 +3,11 @@ import "./TransactionsPage.css";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextBox } from "@/components/ui/Textbox";
-import { Dropdown } from "@/components/ui/dropdown";
+
 import { formatDate } from "@/lib/utils";
+import CustomerButtonSelector from "@/components/ui/CustomerButtonSelector";
 import SearchableDropdown from "@/components/ui/SearchableDropdown";
+
 import {
   fetchTransactions,
   filterTransactions,
@@ -18,6 +20,11 @@ import {
 } from "@/lib/transactionsService";
 import { fetchAllCustomers } from "@/lib/customerService";
 import { Transaction, Customer } from "@/lib/types";
+
+// Add this interface at the top, after the imports
+interface TransactionWithBalance extends Transaction {
+  runningBalance: number;
+}
 
 // Helper functions for month handling
 const getMonthName = (month: number): string => {
@@ -55,6 +62,58 @@ const getMonthTransactions = (transactions: Transaction[], month: number, year: 
   });
 };
 
+// Add this helper function after the existing helper functions
+const calculateRunningBalances = (transactions: Transaction[], customerId?: number): TransactionWithBalance[] => {
+  // Sort transactions by date (oldest first) for accurate balance calculation
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+
+  // If customerId is provided, filter and calculate balance for that customer only
+  // If not provided, calculate global balance across all customers
+  let runningBalance = 0;
+  const customerBalances: Record<number, number> = {};
+
+  const transactionsWithBalance: TransactionWithBalance[] = sortedTransactions.map(transaction => {
+    if (customerId) {
+      // Calculate balance for specific customer only
+      if (transaction.customerId === customerId) {
+        // Apply the transaction to calculate balance AFTER this transaction
+        if (transaction.type === "Debit") {
+          runningBalance += transaction.amount; // Customer owes more
+        } else {
+          runningBalance -= transaction.amount; // Customer paid back
+        }
+      }
+      // For transactions of other customers when filtering by customerId, don't change balance
+    } else {
+      // Calculate balance per customer
+      if (!customerBalances[transaction.customerId]) {
+        customerBalances[transaction.customerId] = 0;
+      }
+      
+      // Apply the transaction to calculate balance AFTER this transaction
+      if (transaction.type === "Debit") {
+        customerBalances[transaction.customerId] += transaction.amount; // Customer owes more
+      } else {
+        customerBalances[transaction.customerId] -= transaction.amount; // Customer paid back
+      }
+      runningBalance = customerBalances[transaction.customerId];
+    }
+
+    return {
+      ...transaction,
+      // This represents the balance AFTER this transaction was applied
+      runningBalance: customerId ? runningBalance : customerBalances[transaction.customerId]
+    };
+  });
+
+  // Sort back to newest first for display
+  return transactionsWithBalance.sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+};
+
 export default function TransactionsPage() {
   // Original state variables
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -62,12 +121,8 @@ export default function TransactionsPage() {
 
   const [filterOption, setFilterOption] = useState<string>("none");
   const [filterCustomer, setFilterCustomer] = useState<string>("");
-  const [filterStartDate, setFilterStartDate] = useState<string>(
-    new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().substring(0, 10)
-  );
-  const [filterEndDate, setFilterEndDate] = useState<string>(
-    new Date().toISOString().substring(0, 10)
-  );
+  const [filterStartDate, setFilterStartDate] = useState<string>("2025-01-01");
+  const [filterEndDate, setFilterEndDate] = useState<string>(new Date().toISOString().substring(0, 10));
 
   const [customerName, setCustomerName] = useState<string>("");
   const [customerId, setCustomerId] = useState<number | null>(null);
@@ -104,33 +159,46 @@ export default function TransactionsPage() {
     new Date().toISOString().substring(0, 10)
   );
 
+  // Update state to store transactions with balance
+  const [transactionsWithBalance, setTransactionsWithBalance] = useState<TransactionWithBalance[]>([]);
+  const [allTransactionsWithBalance, setAllTransactionsWithBalance] = useState<TransactionWithBalance[]>([]);
+
   // Load all transactions from the API
-  const loadAllTransactions = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await fetchTransactions();
+// Update the loadAllTransactions function
+const loadAllTransactions = useCallback(async () => {
+  setIsLoading(true);
+  setError(null);
+  try {
+    const data = await fetchTransactions();
 
-      // Sort all transactions by date in descending order (newest first)
-      const sortedData = [...data].sort((a, b) => {
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      });
+    // Sort all transactions by date in descending order (newest first)
+    const sortedData = [...data].sort((a, b) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
 
-      setAllTransactions(sortedData);
+    // Calculate running balances
+    const dataWithBalance = calculateRunningBalances(data); // Pass unsorted data for accurate calculation
+    setAllTransactionsWithBalance(dataWithBalance);
+    setAllTransactions(sortedData);
 
-      // Also sort the monthly transactions
-      const monthlyTransactions = getMonthTransactions(sortedData, selectedMonth, selectedYear);
-      setTransactions(monthlyTransactions);
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("An unknown error occurred.");
-      }
-    } finally {
-      setIsLoading(false);
+    // Filter for selected month with balance
+    const monthlyTransactions = getMonthTransactions(sortedData, selectedMonth, selectedYear);
+    const monthlyWithBalance = dataWithBalance.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate.getMonth() === selectedMonth && transactionDate.getFullYear() === selectedYear;
+    });
+    setTransactionsWithBalance(monthlyWithBalance);
+    setTransactions(monthlyTransactions);
+  } catch (error) {
+    if (error instanceof Error) {
+      setError(error.message);
+    } else {
+      setError("An unknown error occurred.");
     }
-  }, [selectedMonth, selectedYear]);
+  } finally {
+    setIsLoading(false);
+  }
+}, [selectedMonth, selectedYear]);
 
   // Organize transactions by month
   const organizeTransactionsByMonth = useCallback(() => {
@@ -240,25 +308,32 @@ export default function TransactionsPage() {
     }));
   };
 
-  // Change selected month
-  const changeMonth = (month: number, year: number) => {
-    setSelectedMonth(month);
-    setSelectedYear(year);
+// Update the changeMonth function
+const changeMonth = (month: number, year: number) => {
+  setSelectedMonth(month);
+  setSelectedYear(year);
 
-    // Update filter dates to match the selected month
-    const { startDate, endDate } = getMonthDateRange(month, year);
-    setFilterStartDate(startDate);
-    setFilterEndDate(endDate);
+  // Update filter dates to match the selected month
+  const { startDate, endDate } = getMonthDateRange(month, year);
+  setFilterStartDate(startDate);
+  setFilterEndDate(endDate);
 
-    // Update transactions shown based on selected month
-    setTransactions(getMonthTransactions(allTransactions, month, year));
+  // Update transactions shown based on selected month
+  const monthlyTransactions = getMonthTransactions(allTransactions, month, year);
+  const monthlyWithBalance = allTransactionsWithBalance.filter(t => {
+    const transactionDate = new Date(t.date);
+    return transactionDate.getMonth() === month && transactionDate.getFullYear() === year;
+  });
+  
+  setTransactions(monthlyTransactions);
+  setTransactionsWithBalance(monthlyWithBalance);
 
-    // Expand the selected month
-    setExpandedMonths(prev => ({
-      ...prev,
-      [`${month}-${year}`]: true
-    }));
-  };
+  // Expand the selected month
+  setExpandedMonths(prev => ({
+    ...prev,
+    [`${month}-${year}`]: true
+  }));
+};
 
   // Increment/decrement year
   const changeYear = (increment: number) => {
@@ -274,28 +349,57 @@ export default function TransactionsPage() {
     setTransactions(getMonthTransactions(allTransactions, selectedMonth, newYear));
   };
 
-  const handleFilter = async () => {
-    if (filterOption === "none") {
-      loadAllTransactions();
-      return;
-    }
+// Update the handleFilter function
+const handleFilter = async (customCustomer?: string, customStartDate?: string, customEndDate?: string) => {
+  // Use the parameters if provided, otherwise use state
+  const currentCustomer = customCustomer !== undefined ? customCustomer : filterCustomer;
+  const currentStartDate = customStartDate !== undefined ? customStartDate : filterStartDate;
+  const currentEndDate = customEndDate !== undefined ? customEndDate : filterEndDate;
+  
+  // Determine filter type based on what's selected
+  let filterType = "none";
+  if (currentCustomer && (currentStartDate || currentEndDate)) {
+    filterType = "both";
+  } else if (currentCustomer) {
+    filterType = "customer";
+  } else if (currentStartDate || currentEndDate) {
+    filterType = "date";
+  }
 
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await filterTransactions(filterOption, filterCustomer, filterStartDate, filterEndDate);
-      setAllTransactions(data);
-      setTransactions(getMonthTransactions(data, selectedMonth, selectedYear));
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("An unknown error occurred.");
-      }
-    } finally {
-      setIsLoading(false);
+  if (filterType === "none") {
+    loadAllTransactions();
+    return;
+  }
+
+  setIsLoading(true);
+  setError(null);
+  try {
+    const data = await filterTransactions(filterType, currentCustomer, currentStartDate, currentEndDate);
+    
+    // Calculate running balances for filtered data
+    const customerForBalance = currentCustomer ? customers.find(c => c.name === currentCustomer)?.id : undefined;
+    const dataWithBalance = calculateRunningBalances(data, customerForBalance);
+    
+    setAllTransactionsWithBalance(dataWithBalance);
+    setAllTransactions(data);
+    
+    const monthlyTransactions = getMonthTransactions(data, selectedMonth, selectedYear);
+    const monthlyWithBalance = dataWithBalance.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate.getMonth() === selectedMonth && transactionDate.getFullYear() === selectedYear;
+    });
+    setTransactionsWithBalance(monthlyWithBalance);
+    setTransactions(monthlyTransactions);
+  } catch (error) {
+    if (error instanceof Error) {
+      setError(error.message);
+    } else {
+      setError("An unknown error occurred.");
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleDownload = async () => {
     setIsLoading(true);
@@ -496,6 +600,24 @@ export default function TransactionsPage() {
     }
   };
 
+  // Generate Bill directly without modal
+  const handleGenerateBillDirect = async (customerId: number, customerName: string, startDate: string, endDate: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await downloadCustomerBillPdf(customerId, startDate, endDate);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("An unknown error occurred while generating the bill");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Add this function to open the bill modal
   const openBillModal = (customerId: number, customerName: string) => {
     setBillCustomerId(customerId);
@@ -573,13 +695,15 @@ export default function TransactionsPage() {
                 label="name"
                 id="add-transaction-customer"
                 selectedVal={customerName}
+                disabled={isCustomerLocked}
                 handleChange={(val: string | null) => {
-                  setCustomerName(val ?? "");
-                  const selectedCustomer = customers.find(c => c.name === val);
-                  setCustomerId(selectedCustomer?.id || null);
+                  if (!isCustomerLocked) {
+                    setCustomerName(val ?? "");
+                    const selectedCustomer = customers.find(c => c.name === val);
+                    setCustomerId(selectedCustomer?.id || null);
+                  }
                 }}
-              />
-              {!isCustomerLocked ? (
+              />              {!isCustomerLocked ? (
                 <Button
                   type="button"
                   className="button button-secondary"
@@ -601,15 +725,6 @@ export default function TransactionsPage() {
                   Unlock Customer
                 </Button>
               )}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Transaction Type</label>
-              <Dropdown
-                options={getTransactionTypeOptions()}
-                value={transactionType}
-                onChange={handleTransactionTypeChange}
-              />
             </div>
 
             <div className="form-group">
@@ -673,59 +788,59 @@ export default function TransactionsPage() {
         <CardContent className="card-content">
           <h2>Filter Transactions</h2>
           <div className="filter-container">
-            {/* Filter fields remain the same */}
-            <div className="filter-group">
-              <label className="filter-label">Filter Type</label>
-              <Dropdown
-                options={getFilterOptions()}
-                value={filterOption}
-                onChange={handleFilterOptionChange}
-              />
-            </div>
+            {/* Filter fields - always show date and customer filters */}
 
-            {(filterOption === "customer" || filterOption === "both") && (
-              <div className="filter-group">
-                <label className="filter-label">Customer</label>
-                <SearchableDropdown
-                  options={customers}
-                  label="name"
-                  id="filter-customer"
-                  selectedVal={filterCustomer}
-                  handleChange={(val: string | null) => setFilterCustomer(val ?? "")}
+            {/* Filter fields - always show date and customer filters */}
+            <div className="filter-row-horizontal" style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+              <div className="filter-group" style={{ flex: 1, minWidth: 0 }}>
+                <label className="filter-label">Start Date</label>
+                <TextBox
+                  type="date"
+                  value={filterStartDate}
+                  onChange={e => {
+                    setFilterStartDate(e.target.value);
+                    handleFilter(undefined, e.target.value, undefined);
+                  }}
                 />
               </div>
-            )}
-
-            {(filterOption === "date" || filterOption === "both") && (
-              <>
-                <div className="filter-group">
-                  <label className="filter-label">Start Date</label>
-                  <TextBox
-                    type="date"
-                    value={filterStartDate}
-                    onChange={(e) => setFilterStartDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="filter-group">
-                  <label className="filter-label">End Date</label>
-                  <TextBox
-                    type="date"
-                    value={filterEndDate}
-                    onChange={(e) => setFilterEndDate(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
+              <div className="filter-group" style={{ flex: 1, minWidth: 0 }}>
+                <label className="filter-label">End Date</label>
+                <TextBox
+                  type="date"
+                  value={filterEndDate}
+                  onChange={e => {
+                    setFilterEndDate(e.target.value);
+                    handleFilter(undefined, undefined, e.target.value);
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <Button
+                onClick={() => {
+                  const newStartDate = "2025-01-01";
+                  const newEndDate = new Date().toISOString().substring(0, 10);
+                  setFilterStartDate(newStartDate);
+                  setFilterEndDate(newEndDate);
+                  handleFilter(undefined, newStartDate, newEndDate);
+                }}
+                className="button button-secondary"
+                style={{ fontSize: '0.9rem', padding: '6px 12px' }}
+              >
+                Reset Dates
+              </Button>
+            </div>
+            <CustomerButtonSelector
+              customers={customers}
+              selectedCustomer={filterCustomer}
+              showAllCustomers={true}
+              onSelect={(name, id) => {
+                setFilterCustomer(name);
+                handleFilter(name);
+              }}
+            />
 
             <div className="filter-buttons">
-              <Button
-                onClick={handleFilter}
-                className="button button-primary"
-                disabled={isLoading}
-              >
-                Apply Filter
-              </Button>
               <Button
                 onClick={handleDownload}
                 className="button button-secondary"
@@ -735,12 +850,14 @@ export default function TransactionsPage() {
               </Button>
 
               {/* Add the Generate Bill button only when a customer is selected */}
-              {(filterOption === "customer" || filterOption === "both") && filterCustomer && (
+              {filterCustomer && (
                 <Button
                   onClick={() => {
                     const customer = customers.find(c => c.name === filterCustomer);
                     if (customer) {
-                      openBillModal(customer.id, customer.name);
+                      if (window.confirm(`Generate bill for ${filterCustomer} from ${filterStartDate} to ${filterEndDate}?`)) {
+                        handleGenerateBillDirect(customer.id, filterCustomer, filterStartDate, filterEndDate);
+                      }
                     } else {
                       setError("Please select a valid customer first");
                     }
@@ -755,6 +872,46 @@ export default function TransactionsPage() {
           </div>
         </CardContent>
       </Card>
+
+      
+      {/* Filter Summary */}
+      <div className="filter-summary" style={{ 
+        marginBottom: '20px',
+        padding: '16px', 
+        backgroundColor: '#f8f9fa', 
+        borderRadius: '8px',
+        display: 'flex',
+        justifyContent: 'space-around',
+        flexWrap: 'wrap',
+        gap: '20px',
+        border: '1px solid #e9ecef'
+      }}>
+        {(() => {
+          const summary = calculateMonthlySummary(allTransactions);
+          return (
+            <>
+              <div className="summary-item" style={{ textAlign: 'center' }}>
+                <div className="summary-label" style={{ fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>Total Debits</div>
+                <div className="summary-value debit" style={{ fontWeight: 'bold', fontSize: '1.0rem', color: '#dc3545' }}>${summary.totalDebit.toFixed(0)}</div>
+              </div>
+              <div className="summary-item" style={{ textAlign: 'center' }}>
+                <div className="summary-label" style={{ fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>Total Credits</div>
+                <div className="summary-value credit" style={{ fontWeight: 'bold', fontSize: '1.0rem', color: '#28a745' }}>${summary.totalCredit.toFixed(0)}</div>
+              </div>
+              <div className="summary-item" style={{ textAlign: 'center' }}>
+                <div className="summary-label" style={{ fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>Net Amount</div>
+                <div className={`summary-value ${summary.netAmount >= 0 ? 'debit' : 'credit'}`} style={{
+                  fontWeight: 'bold',
+                  fontSize: '1.0rem',
+                  color: summary.netAmount >= 0 ? '#dc3545' : '#28a745'
+                }}>
+                  ${Math.abs(summary.netAmount).toFixed(0)}
+                </div>
+              </div>
+            </>
+          );
+        })()}
+      </div>
 
       {/* Transactions for Selected Month */}
       <Card className="card">
@@ -779,16 +936,16 @@ export default function TransactionsPage() {
                       </div>
                       <div className="summary-item">
                         <div className="summary-label">Total Debits</div>
-                        <div className="summary-value debit">${summary.totalDebit.toFixed(2)}</div>
+                        <div className="summary-value debit">${summary.totalDebit.toFixed(0)}</div>
                       </div>
                       <div className="summary-item">
                         <div className="summary-label">Total Credits</div>
-                        <div className="summary-value credit">${summary.totalCredit.toFixed(2)}</div>
+                        <div className="summary-value credit">${summary.totalCredit.toFixed(0)}</div>
                       </div>
                       <div className="summary-item">
                         <div className="summary-label">Net Amount</div>
                         <div className={`summary-value ${summary.netAmount >= 0 ? 'debit' : 'credit'}`}>
-                          ${Math.abs(summary.netAmount).toFixed(2)}
+                          ${Math.abs(summary.netAmount).toFixed(0)}
                         </div>
                       </div>
                     </>
@@ -797,150 +954,154 @@ export default function TransactionsPage() {
               </div>
 
               <div className="table-container">
-                <table className="transactions-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Customer</th>
-                      <th>Type</th>
-                      <th>Amount</th>
-                      <th>Description</th>
-                      <th>Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map((transaction) => (
-                      <tr key={transaction.id}>
-                        <td>{transaction.id}</td>
-                        <td>{transaction.customerName}</td>
-                        <td>{transaction.type === "Credit" ? "Credit" : "Debit"}</td>
-                        <td className={transaction.type === "Debit" ? "text-red-600" : "text-green-600"}>
-                          {transaction.amount.toFixed(2)}
-                        </td>
-                        <td>{transaction.description}</td>
-                        <td>{formatDate(transaction.date)}</td>
-                        <td>
-                          <Button
-                            size="sm"
-                            className="button button-primary"
-                            onClick={() => handleEdit(transaction)}
-                            disabled={isLoading}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="button button-danger"
-                            onClick={() => handleDelete(transaction.id)}
-                            disabled={isLoading}
-                          >
-                            Delete
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+<table className="transactions-table">
+  <thead>
+    <tr>
+      <th>Customer</th>
+      <th>Amount</th>
+      <th>Balance</th>
+      <th>Description</th>
+      <th>Date</th>
+      <th>Type</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {transactionsWithBalance.map((transaction) => (
+      <tr key={transaction.id}>
+        <td>{transaction.customerName}</td>
+        <td className={transaction.type === "Debit" ? "text-red-600" : "text-green-600"}>
+          {transaction.amount.toFixed(0)}
+        </td>
+        <td className={transaction.runningBalance >= 0 ? "text-red-600" : "text-green-600"}>
+          {transaction.runningBalance.toFixed(0)}
+        </td>
+        <td>{transaction.description}</td>
+        <td>{formatDate(transaction.date)}</td>
+        <td>{transaction.type === "Credit" ? "Credit" : "Debit"}</td>
+        <td>
+          <Button
+            size="sm"
+            className="button button-primary"
+            onClick={() => handleEdit(transaction)}
+            disabled={isLoading}
+          >
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            className="button button-danger"
+            onClick={() => handleDelete(transaction.id)}
+            disabled={isLoading}
+          >
+            Delete
+          </Button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
               </div>
             </>
           )}
         </CardContent>
       </Card>
 
-      {/* Historical Months Section */}
-      <h2>Transaction History</h2>
-      {getAvailableMonthsYears()
-        .filter(({ month, year }) => !(month === selectedMonth && year === selectedYear)) // Skip current selected month
-        .map(({ month, year }) => {
-          const key = `${month}-${year}`;
-          const isExpanded = expandedMonths[key] || false;
-          const monthTransactions = monthlyData[key] || [];
-          const summary = calculateMonthlySummary(monthTransactions);
+{getAvailableMonthsYears()
+  .filter(({ month, year }) => !(month === selectedMonth && year === selectedYear))
+  .map(({ month, year }) => {
+    const key = `${month}-${year}`;
+    const isExpanded = expandedMonths[key] || false;
+    const monthTransactions = monthlyData[key] || [];
+    // Calculate balance for historical months
+    const monthTransactionsWithBalance = calculateRunningBalances(monthTransactions);
+    const summary = calculateMonthlySummary(monthTransactions);
 
-          return (
-            <div key={key} className="month-section">
-              <div
-                className="month-header"
-                onClick={() => toggleMonthExpansion(month, year)}
-              >
-                <h3>{getMonthName(month)} {year} ({summary.count} transactions)</h3>
-                <button className="month-toggle">
-                  {isExpanded ? '▼' : '►'}
-                </button>
+    return (
+      <div key={key} className="month-section">
+        <div
+          className="month-header"
+          onClick={() => toggleMonthExpansion(month, year)}
+        >
+          <h3>{getMonthName(month)} {year} ({summary.count} transactions)</h3>
+          <button className="month-toggle">
+            {isExpanded ? '▼' : '►'}
+          </button>
+        </div>
+
+        {isExpanded && monthTransactions.length > 0 && (
+          <div className="month-content">
+            <div className="month-summary">
+              <div className="summary-item">
+                <div className="summary-label">Total Debits</div>
+                <div className="summary-value debit">${summary.totalDebit.toFixed(0)}</div>
               </div>
-
-              {isExpanded && monthTransactions.length > 0 && (
-                <div className="month-content">
-                  <div className="month-summary">
-                    <div className="summary-item">
-                      <div className="summary-label">Total Debits</div>
-                      <div className="summary-value debit">${summary.totalDebit.toFixed(2)}</div>
-                    </div>
-                    <div className="summary-item">
-                      <div className="summary-label">Total Credits</div>
-                      <div className="summary-value credit">${summary.totalCredit.toFixed(2)}</div>
-                    </div>
-                    <div className="summary-item">
-                      <div className="summary-label">Net Amount</div>
-                      <div className={`summary-value ${summary.netAmount >= 0 ? 'debit' : 'credit'}`}>
-                        ${Math.abs(summary.netAmount).toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="table-container">
-                    <table className="transactions-table">
-                      <thead>
-                        <tr>
-                          <th>ID</th>
-                          <th>Customer</th>
-                          <th>Type</th>
-                          <th>Amount</th>
-                          <th>Description</th>
-                          <th>Date</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {monthTransactions.map((transaction) => (
-                          <tr key={transaction.id}>
-                            <td>{transaction.id}</td>
-                            <td>{transaction.customerName}</td>
-                            <td>{transaction.type === "Credit" ? "Credit" : "Debit"}</td>
-                            <td className={transaction.type === "Debit" ? "text-red-600" : "text-green-600"}>
-                              {transaction.amount.toFixed(2)}
-                            </td>
-                            <td>{transaction.description}</td>
-                            <td>{formatDate(transaction.date)}</td>
-                            <td>
-                              <Button
-                                size="sm"
-                                className="button button-primary"
-                                onClick={() => handleEdit(transaction)}
-                                disabled={isLoading}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="button button-danger"
-                                onClick={() => handleDelete(transaction.id)}
-                                disabled={isLoading}
-                              >
-                                Delete
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+              <div className="summary-item">
+                <div className="summary-label">Total Credits</div>
+                <div className="summary-value credit">${summary.totalCredit.toFixed(0)}</div>
+              </div>
+              <div className="summary-item">
+                <div className="summary-label">Net Amount</div>
+                <div className={`summary-value ${summary.netAmount >= 0 ? 'debit' : 'credit'}`}>
+                  ${Math.abs(summary.netAmount).toFixed(0)}
                 </div>
-              )}
+              </div>
             </div>
-          );
-        })}
+
+            <div className="table-container">
+              <table className="transactions-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Balance</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthTransactionsWithBalance.map((transaction) => (
+                    <tr key={transaction.id}>
+                      <td>{transaction.customerName}</td>
+                      <td>{transaction.type === "Credit" ? "Credit" : "Debit"}</td>
+                      <td className={transaction.type === "Debit" ? "text-red-600" : "text-green-600"}>
+                        {transaction.amount.toFixed(0)}
+                      </td>
+                      <td className={transaction.runningBalance >= 0 ? "text-red-600" : "text-green-600"}>
+                        {transaction.runningBalance.toFixed(0)}
+                      </td>
+                      <td>{transaction.description}</td>
+                      <td>{formatDate(transaction.date)}</td>
+                      <td>
+                        <Button
+                          size="sm"
+                          className="button button-primary"
+                          onClick={() => handleEdit(transaction)}
+                          disabled={isLoading}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="button button-danger"
+                          onClick={() => handleDelete(transaction.id)}
+                          disabled={isLoading}
+                        >
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  })}
 
       {/* Bill Generation Modal */}
       {showBillModal && (

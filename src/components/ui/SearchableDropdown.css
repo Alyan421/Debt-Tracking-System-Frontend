@@ -86,3 +86,17 @@
   background: #e6f0ff;
   font-weight: 500;
 }
+
+.dropdown.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.dropdown.disabled .control {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.dropdown.disabled input {
+  cursor: not-allowed;
+}
