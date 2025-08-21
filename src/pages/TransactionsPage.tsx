@@ -1013,8 +1013,14 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
     const key = `${month}-${year}`;
     const isExpanded = expandedMonths[key] || false;
     const monthTransactions = monthlyData[key] || [];
-    // Calculate balance for historical months
-    const monthTransactionsWithBalance = calculateRunningBalances(monthTransactions);
+    
+    // FIXED: Use the correct running balances from allTransactionsWithBalance
+    // instead of recalculating from scratch
+    const monthTransactionsWithBalance = monthTransactions.map(transaction => {
+      const transactionWithBalance = allTransactionsWithBalance.find(t => t.id === transaction.id);
+      return transactionWithBalance || { ...transaction, runningBalance: 0 };
+    });
+    
     const summary = calculateMonthlySummary(monthTransactions);
 
     return (
