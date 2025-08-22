@@ -907,11 +907,11 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
             <>
               <div className="summary-item" style={{ textAlign: 'center' }}>
                 <div className="summary-label" style={{ fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>Total Debits</div>
-                <div className="summary-value debit" style={{ fontWeight: 'bold', fontSize: '1.0rem', color: '#dc3545' }}>${summary.totalDebit.toFixed(0)}</div>
+                <div className="summary-value debit" style={{ fontWeight: 'bold', fontSize: '1.0rem', color: '#dc3545' }}>Rs {summary.totalDebit.toFixed(0)}</div>
               </div>
               <div className="summary-item" style={{ textAlign: 'center' }}>
                 <div className="summary-label" style={{ fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>Total Credits</div>
-                <div className="summary-value credit" style={{ fontWeight: 'bold', fontSize: '1.0rem', color: '#28a745' }}>${summary.totalCredit.toFixed(0)}</div>
+                <div className="summary-value credit" style={{ fontWeight: 'bold', fontSize: '1.0rem', color: '#28a745' }}>Rs {summary.totalCredit.toFixed(0)}</div>
               </div>
               <div className="summary-item" style={{ textAlign: 'center' }}>
                 <div className="summary-label" style={{ fontSize: '0.9rem', color: '#666', marginBottom: '6px' }}>Net Amount</div>
@@ -920,7 +920,7 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
                   fontSize: '1.0rem',
                   color: summary.netAmount >= 0 ? '#dc3545' : '#28a745'
                 }}>
-                  ${Math.abs(summary.netAmount).toFixed(0)}
+                  Rs {Math.abs(summary.netAmount).toFixed(0)}
                 </div>
               </div>
             </>
@@ -951,16 +951,16 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
                       </div>
                       <div className="summary-item">
                         <div className="summary-label">Total Debits</div>
-                        <div className="summary-value debit">${summary.totalDebit.toFixed(0)}</div>
+                        <div className="summary-value debit">Rs {summary.totalDebit.toFixed(0)}</div>
                       </div>
                       <div className="summary-item">
                         <div className="summary-label">Total Credits</div>
-                        <div className="summary-value credit">${summary.totalCredit.toFixed(0)}</div>
+                        <div className="summary-value credit">Rs {summary.totalCredit.toFixed(0)}</div>
                       </div>
                       <div className="summary-item">
                         <div className="summary-label">Net Amount</div>
                         <div className={`summary-value ${summary.netAmount >= 0 ? 'debit' : 'credit'}`}>
-                          ${Math.abs(summary.netAmount).toFixed(0)}
+                          Rs {Math.abs(summary.netAmount).toFixed(0)}
                         </div>
                       </div>
                     </>
@@ -1055,16 +1055,16 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
             <div className="month-summary">
               <div className="summary-item">
                 <div className="summary-label">Total Debits</div>
-                <div className="summary-value debit">${summary.totalDebit.toFixed(0)}</div>
+                <div className="summary-value debit">Rs {summary.totalDebit.toFixed(0)}</div>
               </div>
               <div className="summary-item">
                 <div className="summary-label">Total Credits</div>
-                <div className="summary-value credit">${summary.totalCredit.toFixed(0)}</div>
+                <div className="summary-value credit">Rs {summary.totalCredit.toFixed(0)}</div>
               </div>
               <div className="summary-item">
                 <div className="summary-label">Net Amount</div>
                 <div className={`summary-value ${summary.netAmount >= 0 ? 'debit' : 'credit'}`}>
-                  ${Math.abs(summary.netAmount).toFixed(0)}
+                  Rs {Math.abs(summary.netAmount).toFixed(0)}
                 </div>
               </div>
             </div>
