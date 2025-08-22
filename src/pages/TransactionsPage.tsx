@@ -3,6 +3,7 @@ import "./TransactionsPage.css";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TextBox } from "@/components/ui/Textbox";
+import { Dropdown } from "@/components/ui/dropdown";
 
 import { formatDate } from "@/lib/utils";
 import CustomerButtonSelector from "@/components/ui/CustomerButtonSelector";
@@ -725,6 +726,16 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
                   Unlock Customer
                 </Button>
               )}
+            </div>
+
+            <div className="form-group">
+              <Dropdown
+                label="Transaction Type"
+                value={transactionType}
+                onChange={handleTransactionTypeChange}
+                options={getTransactionTypeOptions()}
+                required
+              />
             </div>
 
             <div className="form-group">
