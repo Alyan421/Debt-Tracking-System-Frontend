@@ -526,9 +526,13 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
 
     // Format the date from ISO to YYYY-MM-DD for the date input
     if (transaction.date) {
+      // Create a date object and get the local date components to avoid timezone issues
       const date = new Date(transaction.date);
-      const formattedDate = date.toISOString().substring(0, 10);
-      setDate(formattedDate);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const localDateStr = `${year}-${month}-${day}`;
+      setDate(localDateStr);
     } else {
       setDate(new Date().toISOString().substring(0, 10));
     }
