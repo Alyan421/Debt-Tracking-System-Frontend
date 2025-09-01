@@ -60,36 +60,19 @@ export default function CustomersPage() {
 
     try {
       if (editingCustomer) {
-        // Format the date properly for the backend
-        let formattedDate = createdAt;
-        if (!formattedDate.includes('T')) {
-          // Convert YYYY-MM-DD to ISO format
-          const date = new Date(formattedDate);
-          formattedDate = date.toISOString();
-        }
-
-        // For editing, include any required fields from the original customer
-        // But DO NOT include totalDebt when editing - the backend should maintain the debt value
+        // Backend only accepts id, name, phone, and address for updates
         const customerData = {
           id: editingCustomer.id,
           name,
-          phone: phone || undefined, // Use undefined instead of null
-          address: address || undefined, // Use undefined instead of null
-          // totalDebt is removed from here since we don't want to modify it when editing
-          createdAt: formattedDate
+          phone: phone || undefined,
+          address: address || undefined
+          // Do NOT include totalDebt or createdAt - backend doesn't accept these for updates
         };
 
         console.log('Updating customer with data:', customerData);
         await updateCustomer(editingCustomer.id, customerData);
       } else {
-        // Similar format for creating new customers
-        let formattedDate = createdAt;
-        if (!formattedDate.includes('T')) {
-          const date = new Date(formattedDate);
-          formattedDate = date.toISOString();
-        }
-
-        // Ensure totalDebt is correctly parsed as a number
+        // Since backend now expects just date (YYYY-MM-DD), use the date directly
         const debtAmount = totalDebt === "" ? 0 : parseFloat(totalDebt);
 
         // When creating, we do want to set the initial debt amount
@@ -98,7 +81,7 @@ export default function CustomersPage() {
           phone: phone || undefined, // Use undefined instead of null
           address: address || undefined, // Use undefined instead of null
           totalDebt: debtAmount, // Use the parsed value
-          createdAt: formattedDate
+          createdAt: createdAt // Use the date directly in YYYY-MM-DD format
         };
 
         console.log('Creating customer with data:', customerData);
@@ -160,11 +143,9 @@ export default function CustomersPage() {
     setAddress(customer.address || "");
     setTotalDebt(customer.totalDebt?.toString() || "0");
 
-    // Format the date from ISO to YYYY-MM-DD for the date input
+    // Since backend now returns just date (YYYY-MM-DD), use it directly
     if (customer.createdAt) {
-      const date = new Date(customer.createdAt);
-      const formattedDate = date.toISOString().substring(0, 10);
-      setcreatedAt(formattedDate);
+      setcreatedAt(customer.createdAt);
     } else {
       setcreatedAt(new Date().toISOString().substring(0, 10));
     }
@@ -244,15 +225,18 @@ export default function CustomersPage() {
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label">Last Transaction Date</label>
-              <TextBox
-                name="createdAt"
-                type="date"
-                value={createdAt}
-                onChange={(e) => setcreatedAt(e.target.value)}
-              />
-            </div>
+            {/* Only show the Created Date field when adding a new customer (not when editing) */}
+            {!editingCustomer && (
+              <div className="form-group">
+                <label className="form-label">Last Transaction Date</label>
+                <TextBox
+                  name="createdAt"
+                  type="date"
+                  value={createdAt}
+                  onChange={(e) => setcreatedAt(e.target.value)}
+                />
+              </div>
+            )}
 
             <div className="form-buttons">
               <Button

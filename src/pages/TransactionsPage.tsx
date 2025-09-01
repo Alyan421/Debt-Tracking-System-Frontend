@@ -57,17 +57,23 @@ const getMonthTransactions = (transactions: Transaction[], month: number, year: 
     return transactionDate.getMonth() === month && transactionDate.getFullYear() === year;
   });
 
-  // Then sort by date in descending order
+  // Then sort by date in descending order, with ID as secondary sort for consistency
   return filtered.sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
+    const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (dateComparison !== 0) return dateComparison;
+    // If dates are same, sort by ID descending (newest ID first)
+    return b.id - a.id;
   });
 };
 
 // Add this helper function after the existing helper functions
 const calculateRunningBalances = (transactions: Transaction[], customerId?: number): TransactionWithBalance[] => {
-  // Sort transactions by date (oldest first) for accurate balance calculation
+  // Sort transactions by date (oldest first) and then by ID for consistent ordering
   const sortedTransactions = [...transactions].sort((a, b) => {
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
+    const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (dateComparison !== 0) return dateComparison;
+    // If dates are same, sort by ID to ensure consistent order
+    return a.id - b.id;
   });
 
   // If customerId is provided, filter and calculate balance for that customer only
@@ -108,10 +114,12 @@ const calculateRunningBalances = (transactions: Transaction[], customerId?: numb
       runningBalance: customerId ? runningBalance : customerBalances[transaction.customerId]
     };
   });
-
-  // Sort back to newest first for display
+    // Sort back to newest first for display, but maintain consistent order for same dates
   return transactionsWithBalance.sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
+    const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (dateComparison !== 0) return dateComparison;
+    // If dates are same, sort by ID descending (newest ID first)
+    return b.id - a.id;
   });
 };
 
@@ -174,7 +182,10 @@ const loadAllTransactions = useCallback(async () => {
 
     // Sort all transactions by date in descending order (newest first)
     const sortedData = [...data].sort((a, b) => {
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
+      const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateComparison !== 0) return dateComparison;
+      // If dates are same, sort by ID descending (newest ID first)
+      return b.id - a.id;
     });
 
     // Calculate running balances
@@ -222,7 +233,10 @@ const loadAllTransactions = useCallback(async () => {
     // Sort transactions within each month by date in descending order
     Object.keys(monthData).forEach(key => {
       monthData[key].sort((a, b) => {
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
+        const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (dateComparison !== 0) return dateComparison;
+        // If dates are same, sort by ID descending (newest ID first)
+        return b.id - a.id;
       });
     });
 
@@ -402,6 +416,33 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
   }
 };
 
+ const reloadWithCurrentFilters = useCallback(async () => {
+  setIsLoading(true);
+  setError(null);
+  
+  try {
+    // Check if we have active filters
+    const hasCustomerFilter = filterCustomer && filterCustomer.trim() !== "";
+    const hasDateFilter = filterStartDate || filterEndDate;
+    
+    if (!hasCustomerFilter && !hasDateFilter) {
+      // No filters active, load all transactions
+      await loadAllTransactions();
+    } else {
+      // Filters are active, use handleFilter to maintain them
+      await handleFilter(filterCustomer, filterStartDate, filterEndDate);
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      setError(error.message);
+    } else {
+      setError("An unknown error occurred.");
+    }
+  } finally {
+    setIsLoading(false);
+  }
+}, [filterCustomer, filterStartDate, filterEndDate, loadAllTransactions, handleFilter]);
+
   const handleDownload = async () => {
     setIsLoading(true);
     setError(null);
@@ -424,7 +465,7 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
       setError(null);
       try {
         await deleteTransaction(id);
-        await loadAllTransactions();
+        await reloadWithCurrentFilters();
       } catch (error) {
         if (error instanceof Error) {
           setError(error.message);
@@ -437,84 +478,76 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
     }
   };
 
-  const handleAddTransaction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
+const handleAddTransaction = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError(null);
+  setIsSubmitting(true);
 
-    if (!customerName) {
-      setError("Please select a customer.");
+  if (!customerName) {
+    setError("Please select a customer.");
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (!amount || parseFloat(amount) <= 0) {
+    setError("Please enter a valid amount.");
+    setIsSubmitting(false);
+    return;
+  }
+
+  // Find the selected customer's ID if not already set
+  if (!customerId) {
+    const selectedCustomer = customers.find(c => c.name === customerName);
+    if (!selectedCustomer) {
+      setError("Invalid customer selection.");
       setIsSubmitting(false);
       return;
     }
+    setCustomerId(selectedCustomer.id);
+  }
 
-    if (!amount || parseFloat(amount) <= 0) {
-      setError("Please enter a valid amount.");
-      setIsSubmitting(false);
-      return;
+  try {
+    // Since backend now expects just date (YYYY-MM-DD), use the date directly
+    const transactionData: AddTransactionRequest = {
+      customerId: Number(customerId),
+      customerName,
+      type: transactionType as "Credit" | "Debit",
+      amount: parseFloat(amount),
+      description,
+      date: date // Use the date directly in YYYY-MM-DD format
+    };
+
+    if (editingTransaction) {
+      // Wait for the update to complete
+      const updatedTransaction = await updateTransaction(editingTransaction.id, transactionData);
+      console.log("Transaction updated successfully:", updatedTransaction);
+
+      // Reload data while preserving current filters
+      await reloadWithCurrentFilters();
+
+      // Reset form state after successful update
+      resetForm();
+    } else {
+      // Wait for the add to complete
+      const newTransaction = await addTransaction(transactionData);
+      console.log("Transaction added successfully:", newTransaction);
+
+      // Reload data while preserving current filters
+      await reloadWithCurrentFilters();
+
+      // Reset form state after successful add
+      resetForm();
     }
-
-    // Find the selected customer's ID if not already set
-    if (!customerId) {
-      const selectedCustomer = customers.find(c => c.name === customerName);
-      if (!selectedCustomer) {
-        setError("Invalid customer selection.");
-        setIsSubmitting(false);
-        return;
-      }
-      setCustomerId(selectedCustomer.id);
+  } catch (error) {
+    if (error instanceof Error) {
+      setError(error.message);
+    } else {
+      setError("An unknown error occurred.");
     }
-
-    try {
-      // Format the date to be at the start of the day (00:00:00)
-      let formattedDate = date;
-      if (!formattedDate.includes('T')) {
-        // Parse the date and set time to 00:00:00
-        const dateObj = new Date(formattedDate);
-        dateObj.setHours(0, 0, 0, 0);  // Set to beginning of day
-        formattedDate = dateObj.toISOString();
-      }
-
-      const transactionData: AddTransactionRequest = {
-        customerId: Number(customerId),
-        customerName,
-        type: transactionType as "Credit" | "Debit",
-        amount: parseFloat(amount),
-        description,
-        date: formattedDate // Use the formatted date with time set to 00:00:00
-      };
-
-      if (editingTransaction) {
-        // Wait for the update to complete
-        const updatedTransaction = await updateTransaction(editingTransaction.id, transactionData);
-        console.log("Transaction updated successfully:", updatedTransaction);
-
-        // Force a reload of all transactions to refresh the UI
-        await loadAllTransactions();
-
-        // Reset form state after successful update
-        resetForm();
-      } else {
-        // Wait for the add to complete
-        const newTransaction = await addTransaction(transactionData);
-        console.log("Transaction added successfully:", newTransaction);
-
-        // Force a reload of all transactions to refresh the UI
-        await loadAllTransactions();
-
-        // Reset form state after successful add
-        resetForm();
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("An unknown error occurred.");
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
@@ -524,15 +557,9 @@ const handleFilter = async (customCustomer?: string, customStartDate?: string, c
     setAmount(transaction.amount.toString());
     setDescription(transaction.description);
 
-    // Format the date from ISO to YYYY-MM-DD for the date input
+    // Since backend now returns just date (YYYY-MM-DD), use it directly
     if (transaction.date) {
-      // Create a date object and get the local date components to avoid timezone issues
-      const date = new Date(transaction.date);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const localDateStr = `${year}-${month}-${day}`;
-      setDate(localDateStr);
+      setDate(transaction.date);
     } else {
       setDate(new Date().toISOString().substring(0, 10));
     }

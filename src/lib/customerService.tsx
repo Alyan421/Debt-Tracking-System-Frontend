@@ -100,21 +100,14 @@ export const createCustomer = async (customer: Omit<Customer, "id">): Promise<Cu
  */
 export const updateCustomer = async (id: number, customerData: Partial<Customer>): Promise<Customer> => {
   try {
-    // Format the data exactly as expected by the backend
+    // Backend only accepts id, name, phone, and address for updates
     const formattedData = {
       id: id,
       name: customerData.name,
       phone: customerData.phone || null,
-      address: customerData.address || null,
-      createdAt: customerData.createdAt
+      address: customerData.address || null
+      // Do NOT include totalDebt or createdAt - backend doesn't accept these for updates
     };
-
-    // Ensure createdAt is in ISO format
-    if (formattedData.createdAt && !formattedData.createdAt.includes('T')) {
-      // Convert YYYY-MM-DD to ISO format
-      const date = new Date(formattedData.createdAt);
-      formattedData.createdAt = date.toISOString();
-    }
 
     console.log('Updating customer with formatted data:', formattedData);
 

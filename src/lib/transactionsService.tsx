@@ -166,27 +166,11 @@ export const filterTransactionsByDateRange = async (
   endDate: string
 ): Promise<Transaction[]> => {
   try {
-    // Properly convert dates to UTC ISO format
-    let formattedStartDate = startDate;
-    let formattedEndDate = endDate;
-    
-    // Create UTC dates
-    if (!formattedStartDate.includes('Z')) { // Z indicates UTC timezone
-      const startDateObj = new Date(formattedStartDate);
-      formattedStartDate = startDateObj.toISOString(); // This is in UTC by default
-    }
-    
-    if (!formattedEndDate.includes('Z')) {
-      const endDateObj = new Date(formattedEndDate);
-      // Set to end of day in UTC
-      endDateObj.setUTCHours(23, 59, 59, 999);
-      formattedEndDate = endDateObj.toISOString();
-    }
-    
-    console.log('Filter dates (UTC):', { formattedStartDate, formattedEndDate });
+    // Since backend now expects just dates (YYYY-MM-DD), use them directly
+    console.log('Filter dates:', { startDate, endDate });
     
     // GET /api/Transaction/filter-by-date-range
-    const url = `${API_URL}/filter-by-date-range?startDate=${encodeURIComponent(formattedStartDate)}&endDate=${encodeURIComponent(formattedEndDate)}`;
+    const url = `${API_URL}/filter-by-date-range?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
     const response = await fetch(url, {
       headers: getHeaders()
     });
@@ -218,27 +202,11 @@ export const filterTransactionsByCustomerAndDateRange = async (
   endDate: string
 ): Promise<Transaction[]> => {
   try {
-    // Properly convert dates to UTC ISO format
-    let formattedStartDate = startDate;
-    let formattedEndDate = endDate;
-    
-    // Create UTC dates
-    if (!formattedStartDate.includes('Z')) { // Z indicates UTC timezone
-      const startDateObj = new Date(formattedStartDate);
-      formattedStartDate = startDateObj.toISOString(); // This is in UTC by default
-    }
-    
-    if (!formattedEndDate.includes('Z')) {
-      const endDateObj = new Date(formattedEndDate);
-      // Set to end of day in UTC
-      endDateObj.setUTCHours(23, 59, 59, 999);
-      formattedEndDate = endDateObj.toISOString();
-    }
-    
-    console.log('Filter dates (UTC) with customer:', { customerId, formattedStartDate, formattedEndDate });
+    // Since backend now expects just dates (YYYY-MM-DD), use them directly
+    console.log('Filter dates with customer:', { customerId, startDate, endDate });
     
     // GET /api/Transaction/filter-by-customer-and-date-range
-    const url = `${API_URL}/filter-by-customer-and-date-range?customerId=${customerId}&startDate=${encodeURIComponent(formattedStartDate)}&endDate=${encodeURIComponent(formattedEndDate)}`;
+    const url = `${API_URL}/filter-by-customer-and-date-range?customerId=${customerId}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
     const response = await fetch(url, {
       headers: getHeaders()
     });
@@ -283,27 +251,13 @@ export const downloadTransactionsReport = async (
       params.push(`customerId=${customerId}`);
     }
     
-    // Add date parameters if provided with UTC formatting
+    // Add date parameters if provided - since backend expects just dates
     if (startDate) {
-      // Format date as UTC ISO string
-      let formattedStartDate = startDate;
-      if (!formattedStartDate.includes('Z')) { // Z indicates UTC timezone
-        const startDateObj = new Date(formattedStartDate);
-        formattedStartDate = startDateObj.toISOString(); // This is in UTC by default
-      }
-      params.push(`startDate=${encodeURIComponent(formattedStartDate)}`);
+      params.push(`startDate=${encodeURIComponent(startDate)}`);
     }
     
     if (endDate) {
-      // Format date as UTC ISO string
-      let formattedEndDate = endDate;
-      if (!formattedEndDate.includes('Z')) {
-        const endDateObj = new Date(formattedEndDate);
-        // Set to end of day in UTC
-        endDateObj.setUTCHours(23, 59, 59, 999);
-        formattedEndDate = endDateObj.toISOString();
-      }
-      params.push(`endDate=${encodeURIComponent(formattedEndDate)}`);
+      params.push(`endDate=${encodeURIComponent(endDate)}`);
     }
     
     // Always include query string since type is required
@@ -373,27 +327,13 @@ export interface AddTransactionRequest {
  */
 export const addTransaction = async (transaction: AddTransactionRequest): Promise<Transaction> => {
   try {
-    // Format the date to be at the start of the day
-    let formattedDate = transaction.date;
-    
-    // If it's already an ISO string with time, make sure it's at 00:00:00
-    if (formattedDate.includes('T')) {
-      // Use the ISO string as is, assuming the component already set the correct time
-      // formattedDate = formattedDate;
-    } else {
-      // If it's just a date without time, add 00:00:00
-      const dateObj = new Date(formattedDate);
-      dateObj.setHours(0, 0, 0, 0);
-      formattedDate = dateObj.toISOString();
-    }
-    
-    // Create a clean transaction object with exactly what the backend expects
+    // Since backend now expects just date (YYYY-MM-DD), use it directly
     const apiTransaction = {
       customerId: transaction.customerId,
       type: transaction.type,
       amount: transaction.amount,
       description: transaction.description,
-      date: formattedDate
+      date: transaction.date // Use the date directly in YYYY-MM-DD format
     };
     
     console.log('Transaction data being sent to API:', apiTransaction);
@@ -550,31 +490,15 @@ export const downloadCustomerBillPdf = async (
   endDate: string
 ): Promise<void> => {
   try {
-    // Format dates for the API in UTC format
-    let formattedStartDate = startDate;
-    let formattedEndDate = endDate;
-    
-    // Create UTC dates
-    if (!formattedStartDate.includes('Z')) { // Z indicates UTC timezone
-      const startDateObj = new Date(formattedStartDate);
-      formattedStartDate = startDateObj.toISOString(); // This is in UTC by default
-    }
-    
-    if (!formattedEndDate.includes('Z')) {
-      const endDateObj = new Date(formattedEndDate);
-      // Set to end of day in UTC
-      endDateObj.setUTCHours(23, 59, 59, 999);
-      formattedEndDate = endDateObj.toISOString();
-    }
+    // Since backend now expects just dates (YYYY-MM-DD), use them directly
+    const params = [
+      `customerId=${customerId}`,
+      `startDate=${encodeURIComponent(startDate)}`,
+      `endDate=${encodeURIComponent(endDate)}`
+    ];
     
     // Construct API URL - we'll use a new endpoint: /api/Transaction/bill
     let url = `${API_URL}/bill`;
-    const params = [
-      `customerId=${customerId}`,
-      `startDate=${encodeURIComponent(formattedStartDate)}`,
-      `endDate=${encodeURIComponent(formattedEndDate)}`
-    ];
-    
     url += `?${params.join('&')}`;
     
     console.log('Downloading bill PDF from URL:', url);
